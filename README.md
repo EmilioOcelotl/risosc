@@ -1,6 +1,6 @@
 # RisOSC
 
-RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único, 
+RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 
 ## web
 

@@ -1,3 +1,10 @@
-web/dist
-web/node_modules
-web/.parcel-cache
+**/node_modules/
+
+**/.parcel-cache/
+**/.cache/
+
+dist/
+build/
+*.log
+.env
+.DS_Store
