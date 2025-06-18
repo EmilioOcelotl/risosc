@@ -92,7 +92,7 @@ function createCyberpunkMessage() {
     const geometry = new THREE.PlaneGeometry(3, 1.5);
     const messageMesh = new THREE.Mesh(geometry, material);
     messageMesh.position.z = 0.5;
-    messageMesh.position.y = -0.125;
+    messageMesh.position.y = 0;
 
     return messageMesh;
 }
