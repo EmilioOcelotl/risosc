@@ -1,92 +1,171 @@
-// Escena, cámara y renderer
-// import * as THREE from 'three';
+// Configuración inicial
+const leftPanel = document.getElementById('left-panel');
+const rightPanel = document.getElementById('right-panel');
+const hydraCanvas = document.getElementById('hydra-canvas');
 
+// Añade estas variables al inicio
+let composer;
+let bloomPass;
+let renderScene;
+let bloomParams = {
+    exposure: 1,
+    bloomStrength: 1.5,  // Intensidad del glow (0.5 a 2.0)
+    bloomThreshold: 0,   // Luminosidad mínima para aplicar glow (0 a 1)
+    bloomRadius: 0.5     // Suavidad del glow (0 a 1)
+};
+
+// Ajustar rectángulos
+function adjustRectangles() {
+    const rectangles = document.querySelectorAll('.rectangle');
+    const panelHeight = leftPanel.clientHeight;
+    const gap = 30;
+    const padding = 30;
+    
+    const availableHeight = panelHeight - (2 * padding) - (3 * gap);
+    const rectHeight = availableHeight / 4;
+    const rectWidth = (rectHeight * 3) / 2;
+    
+    rectangles.forEach(rect => {
+        rect.style.width = `${rectWidth}px`;
+        rect.style.height = `${rectHeight}px`;
+    });
+}
+
+// Three.js Scene
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0xF5F5DC);
-document.body.appendChild(renderer.domElement);
+scene.background = new THREE.Color(0x000000);
+const camera = new THREE.PerspectiveCamera(75, 1280 / 1080, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ 
+    antialias: true,
+    powerPreference: "high-performance"
+});
+renderer.setSize(1280, 1080);
+rightPanel.appendChild(renderer.domElement);
 
-let elCanvas = document.getElementById("hydra-canvas");
-let vit = new THREE.CanvasTexture(elCanvas);
-elCanvas.style.display = 'none';
-
+// Hydra setup
 const hydra = new Hydra({
-    canvas: document.getElementById("hydra-canvas"),
-  });
+    canvas: hydraCanvas,
+    autoLoop: true
+});
+osc(10, 0.04, 0.6)
+    .color(0.9*2, 0.8*4, 1.5)
+    .modulate(noise(0.1, 0.2).rotate(0.1, 0.2).scale(1.01), 0.2)
+    .modulate(src(o0).scale(1.1).rotate(0.1), 0.2)
+    .invert()
+    .saturate(1.1)
+    .out();
 
-  osc([10, -10], -0.5, 1).modulateRepeat(shape(3), 2, 1).color(1, 1, 4).modulateRepeat(src(o0), 1, 1).saturate(2).out(o0); 
+// Textura de Hydra
+const vit = new THREE.CanvasTexture(hydraCanvas);
 
-//osc().out();
+// Mensaje Cyberpunk en 3D
+function createCyberpunkMessage() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Fondo
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Texto
+    ctx.font = 'Bold 80px "Courier New", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    // Efecto de texto neón
+    for(let i = 0; i < 5; i++) {
+        ctx.shadowBlur = 20 - i*3;
+        ctx.shadowColor = i % 2 === 0 ? '#0ff' : '#f0f';
+        ctx.fillStyle = i === 4 ? '#fff' : 'rgba(0, 255, 255, 0.3)';
+        ctx.fillText('HOVER TO ACTIVATE', canvas.width/2, canvas.height/2);
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 1.0
+    });
+    
+    const geometry = new THREE.PlaneGeometry(3, 1.5);
+    const messageMesh = new THREE.Mesh(geometry, material);
+    messageMesh.position.z = 0.5;
+    messageMesh.position.y = -0.125;
 
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
+    return messageMesh;
+}
 
-camera.position.set(0, 0, 3);
-controls.update();
+const messageMesh = createCyberpunkMessage();
+scene.add(messageMesh);
 
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(1, 1, 1);
+// Elementos de la escena
+const width = 4;
+const height = 2;
+const segments = 200;
+const geometry = new THREE.PlaneGeometry(width, height, segments, segments);
+
+const material = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    specular: 0x222222,
+    shininess: 30,
+    emissive: 0x000000,
+    emissiveIntensity: 0,
+    map: vit,
+    reflectivity: 0.9,
+    combine: THREE.MixOperation,
+    shading: THREE.SmoothShading
+});
+
+const cloth = new THREE.Mesh(geometry, material);
+cloth.rotation.x = -Math.PI / 4;
+//cloth.position.y = 0.25;
+cloth.position.z = 0;
+
+// Luces
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
+directionalLight.position.set(0, 2, 2);
 scene.add(directionalLight);
 
 const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
 
-const width = 4;
-const height = 2;
-const segments = 150;
+// Controles
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+camera.position.set(0, 0, 4);
 
-const geometry = new THREE.PlaneGeometry(width, height, segments, segments);
-
-const material = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    side: THREE.DoubleSide,
-    roughness: 0.5,
-    metalness: 0.05,
-    flatShading: false,
-    map: vit,
-});
-
-const cloth = new THREE.Mesh(geometry, material);
-scene.add(cloth);
-
-
+// Animación
 const timeUniform = { value: 0 };
-const positions = geometry.attributes.position;
-const originalPositions = positions.array.slice();
+const originalPositions = geometry.attributes.position.array.slice();
 
 function multiWave(x, y, t) {
-
     const wave1 = Math.sin(x * 4.0 + t * 1.0) * 0.3;
-    
     const wave2 = Math.cos(x * 3.5 + y * 2.0 + t * 1.3) * 0.2;
-    
     const wave3 = Math.sin(x * 1.0 + y * 1.5 + t * 0.7) * 0.8;
-    
     const wave4 = Math.sin(x * 5.2 + y * 3.7 + t * 1.7) * 
-                  Math.cos(x * 2.3 + y * 1.9 + t * 0.9) * 0.05;
-    
+                 Math.cos(x * 2.3 + y * 1.9 + t * 0.9) * 0.05;
     return wave1 + wave2 * wave3 + wave4;
 }
 
+function smoothstep(min, max, value) {
+    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+    return x * x * (3 - 2 * x);
+}
 
-function animate() {
-    requestAnimationFrame(animate);
-    vit.needsUpdate = true;
-
-    timeUniform.value += 0.01;
-    
+function updateClothGeometry() {
+    const positions = cloth.geometry.attributes.position;
     const canvas = document.createElement('canvas');
-    canvas.width = elCanvas.width;
-    canvas.height = elCanvas.height;
+    canvas.width = hydraCanvas.width;
+    canvas.height = hydraCanvas.height;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(elCanvas, 0, 0);
+    ctx.drawImage(hydraCanvas, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
     
-    const colorInfluence = 1; 
+    const colorInfluence = 0.25; 
     const smoothingRadius = 0.25;
     
     for (let i = 0; i < positions.count; i++) {
@@ -121,27 +200,87 @@ function animate() {
         const r = totalR / sampleCount / 255;
         const g = totalG / sampleCount / 255;
         const b = totalB / sampleCount / 255;
-        
         const intensity = smoothstep(0.2, 0.8, (r * 0.3 + g * 0.6 + b * 0.1));
-        
         const waveDisplacement = multiWave(x, y, timeUniform.value);
         
         positions.array[iz] = waveDisplacement + (intensity - 0.5) * colorInfluence;
-        
         positions.array[ix] = x + Math.sin(y * 2.0 + timeUniform.value * 1.5) * 0.01;
         positions.array[iy] = y + Math.cos(x * 1.7 + timeUniform.value * 1.2) * 0.01;
     }
     
     positions.needsUpdate = true;
-    geometry.computeVertexNormals();
+    cloth.geometry.computeVertexNormals();
+}
+
+
+function animate() {
+    requestAnimationFrame(animate);
+    
+    vit.needsUpdate = isActive;
+    
+    if (isActive) {
+        // Añadir el mesh si no está en la escena
+        if (!scene.children.includes(cloth)) {
+            scene.add(cloth);
+            vit.needsUpdate = true;
+        }
+        
+        timeUniform.value += 0.01;
+        updateClothGeometry();
+        
+        // Ocultar mensaje gradualmente
+        messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.1, 0);
+    } else {
+        // Remover el mesh si está en la escena
+        if (scene.children.includes(cloth)) {
+            scene.remove(cloth);
+        }
+        
+        // Mostrar mensaje gradualmente
+        messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.1, 1);
+    }
     
     controls.update();
     renderer.render(scene, camera);
 }
 
-function smoothstep(min, max, value) {
-    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-    return x * x * (3 - 2 * x);
+// Event listeners
+function setupInteractivity() {
+    document.querySelectorAll('.rectangle').forEach(rect => {
+        rect.addEventListener('mouseenter', () => {
+            isActive = true;
+            lastActiveTime = Date.now();
+        });
+        
+        rect.addEventListener('mouseleave', () => {
+            setTimeout(() => {
+                if (Date.now() - lastActiveTime > 100) {
+                    isActive = false;
+                }
+            }, 100);
+        });
+    });
 }
 
-animate();
+// Variables de estado
+let isActive = false;
+let lastActiveTime = 0;
+
+// Inicialización
+function init() {
+    adjustRectangles();
+    setupInteractivity();
+    animate();
+}
+
+// Manejo de redimensionamiento
+window.addEventListener('resize', () => {
+    adjustRectangles();
+    camera.aspect = 1280 / 1080;
+    camera.updateProjectionMatrix();
+    renderer.setSize(1280, 1080);
+});
+
+
+// Iniciar
+init();
