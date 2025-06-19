@@ -320,4 +320,19 @@ window.addEventListener('resize', () => {
     renderer.setSize(1280, 1080);
 });
 
+const socket = new WebSocket('ws://localhost:3000');
+
+socket.addEventListener('message', function (event) {
+    const data = JSON.parse(event.data);
+    if (data.type === 'activate') {
+        const textureIndex = parseInt(data.index);
+        if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+            hydraTextures[textureIndex]();
+            currentHydraTexture = textureIndex;
+            isActive = true;
+            lastActiveTime = Date.now();
+        }
+    }
+});
+
 init();

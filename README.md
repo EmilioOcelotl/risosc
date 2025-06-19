@@ -2,16 +2,11 @@
 
 RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 
-## web
+- web
+- server
+- firmware 
+- scripts
 
-npm
+## Requerimientos
 
-## firmware
-
-python
-
-## server 
-
-npm
-
-## scripts
+- Computadora servidor. En esta computadora corre la proyeción y el servidor local. 
