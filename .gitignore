@@ -3,7 +3,7 @@
 **/.parcel-cache/
 **/.cache/
 
-dist/
+web/dist/
 build/
 *.log
 .env
