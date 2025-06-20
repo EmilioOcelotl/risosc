@@ -71,10 +71,7 @@ function adjustRectangles() {
     });
 }
 
-const scene = newviewer.js:11 
-            
-            
-POST https://risosc.ocelotl.cc/api/nfc 500 (Internal Server Error) THREE.Scene();
+const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 const camera = new THREE.PerspectiveCamera(75, 1280 / 1080, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
