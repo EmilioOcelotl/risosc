@@ -2,7 +2,6 @@ const leftPanel = document.getElementById('left-panel');
 const rightPanel = document.getElementById('right-panel');
 const hydraCanvas = document.getElementById('hydra-canvas');
 
-/*
 let composer;
 let bloomPass;
 let renderScene;
@@ -12,7 +11,6 @@ let bloomParams = {
     bloomThreshold: 0,
     bloomRadius: 0.1
 };
-*/
 
 // Definimos laconsts 4 texturas de Hydra que queremos usar
 const hydraTextures = [
@@ -89,29 +87,95 @@ const hydra = new Hydra({
 // Inicializamos con la primera textura
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
-
-
 async function createCyberpunkMessage() {
     await document.fonts.ready;
 
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
+    canvas.width = 1280;
+    canvas.height = 720;
     const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    
+    // Fondo transparente
+    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.font = 'bold 80px Orbitron';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Variables de animación
+    let nfcPulseSize = 0;
+    let nfcPulseOpacity = 0;
+    let nfcVisible = false;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const nfcY = centerY + 240; // Posición vertical del icono NFC
 
-    for (let i = 0; i < 5; i++) {
-        ctx.shadowBlur = 2 - i * 1;
-        ctx.shadowColor = i % 2 === 0 ? '#0ff' : '#f0f';
-        ctx.fillStyle = i === 4 ? '#fff' : 'rgba(0, 255, 255, 0.3)';
-        ctx.fillText('HOVER TO ACTIVATE', canvas.width / 2, canvas.height / 2);
+    function drawNFCAnimation() {
+        // Limpiar área del NFC
+        ctx.clearRect(0, centerY + 80, canvas.width, 250);
+
+        if (!nfcVisible) return;
+        // Ángulo de apertura (45 grados en radianes = ~0.785)
+        const startAngle = Math.PI + (Math.PI - 0.785)/2.5;  // ~2.75 (247.5°)
+        const endAngle = 0 - (Math.PI - 0.785)/2.5;         // ~-0.39 (-22.5°)
+    
+        // 1. Círculo exterior grande (nuevo)
+        ctx.beginPath();
+        ctx.arc(centerX, nfcY, 60 + nfcPulseSize * 20, startAngle, endAngle, false);
+        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 2. Círculo mediano (onda de pulso)
+        ctx.beginPath();
+        ctx.arc(centerX, nfcY, 45 + nfcPulseSize * 15, startAngle, endAngle, false);
+        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 3. Círculo pequeño (centro NFC)
+        ctx.beginPath();
+        ctx.arc(centerX, nfcY, 30 + nfcPulseSize * 10, startAngle, endAngle, false);
+        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+       
+
+        // Texto "NFC"
+        ctx.font = 'bold 36px Orbitron';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
+        ctx.fillText('NFC', centerX, nfcY + 50);
     }
+
+    function animateNFCIcon() {
+        if (nfcVisible) {
+            nfcPulseSize = (nfcPulseSize + 0.005) % 1;
+            nfcPulseOpacity = Math.min(1, nfcPulseOpacity + 0.08);
+        } else {
+            nfcPulseOpacity = Math.max(0, nfcPulseOpacity - 0.05);
+        }
+        
+        drawMainText();
+        drawNFCAnimation();
+        texture.needsUpdate = true;
+        requestAnimationFrame(animateNFCIcon);
+    }
+
+    function drawMainText() {
+        // Texto principal
+        ctx.font = 'bold 80px Orbitron';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+        ctx.fillText('ACERCA EL DISPOSITIVO', centerX, centerY - 50);
+
+        // Texto secundario
+        ctx.font = 'bold 42px Orbitron';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillText('al icono NFC para activar la experiencia', centerX, centerY + 30);
+    }
+
+    // Dibujo inicial
+    drawMainText();
 
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.MeshBasicMaterial({
@@ -124,6 +188,14 @@ async function createCyberpunkMessage() {
     const messageMesh = new THREE.Mesh(geometry, material);
     messageMesh.position.z = 0.5;
     messageMesh.position.y = 0;
+
+    // Iniciar animación
+    animateNFCIcon();
+
+    // Control de visibilidad
+    messageMesh.showNFC = function(show) {
+        nfcVisible = show;
+    };
 
     return messageMesh;
 }
@@ -365,6 +437,11 @@ function animate() {
 function setupInteractivity() {
     document.querySelectorAll('.rectangle').forEach(rect => {
         rect.addEventListener('mouseenter', () => {
+            if (messageMesh) {
+                messageMesh.showNFC(true);
+            }
+
+            
             const textureIndex = parseInt(rect.dataset.textureIndex);
             if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
                 // Ejecutamos la función de Hydra correspondiente
