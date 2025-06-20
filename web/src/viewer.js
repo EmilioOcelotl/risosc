@@ -81,7 +81,8 @@ container.appendChild(renderer.domElement);
 
 const hydra = new Hydra({
     canvas: hydraCanvas,
-    autoLoop: true
+    autoLoop: true,
+    detectAudio: false
 });
 
 const nfcIndex = getNFCParam();
