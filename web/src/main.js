@@ -7,12 +7,12 @@ let bloomPass;
 let renderScene;
 let bloomParams = {
     exposure: 1,
-    bloomStrength: 1.5,
+    bloomStrength: 0.1,
     bloomThreshold: 0,
-    bloomRadius: 0.5
+    bloomRadius: 0.1
 };
 
-// Definimos las 4 texturas de Hydra que queremos usar
+// Definimos laconsts 4 texturas de Hydra que queremos usar
 const hydraTextures = [
     () => {
         osc(10, 0.04, 0.6)
@@ -89,16 +89,6 @@ hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
 
 
-/*
-osc(10, 0.04, 0.6)
-    .color(0.9 * 2, 0.8 * 4, 1.5)
-    .modulate(noise(0.1, 0.2).rotate(0.1, 0.2).scale(1.01), 0.2)
-    .modulate(src(o0).scale(1.1).rotate(0.1), 0.2)
-    .invert()
-    .saturate(1.1)
-    .out();
-*/
-
 async function createCyberpunkMessage() {
     await document.fonts.ready;
 
@@ -115,7 +105,7 @@ async function createCyberpunkMessage() {
     ctx.textBaseline = 'middle';
 
     for (let i = 0; i < 5; i++) {
-        ctx.shadowBlur = 20 - i * 3;
+        ctx.shadowBlur = 2 - i * 1;
         ctx.shadowColor = i % 2 === 0 ? '#0ff' : '#f0f';
         ctx.fillStyle = i === 4 ? '#fff' : 'rgba(0, 255, 255, 0.3)';
         ctx.fillText('HOVER TO ACTIVATE', canvas.width / 2, canvas.height / 2);
@@ -161,13 +151,85 @@ const material = new THREE.MeshPhongMaterial({
 
 const cloth = new THREE.Mesh(geometry, material);
 cloth.rotation.x = -Math.PI / 4;
+cloth.rotation.z += 0.01;
 cloth.position.z = 0;
 
+/* >>>  BLOQUE DEL CUBO MODIFICADO <<< */
+const cubeSize = 3;
+const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+
+const edges = new THREE.EdgesGeometry(cubeGeometry);
+const lineMaterial = new THREE.LineBasicMaterial({ 
+    color: 0xffffff, 
+    transparent: true,
+    opacity: 0.2,
+    linewidth: 0.01
+});
+const wireframeCube = new THREE.LineSegments(edges, lineMaterial);
+scene.add(wireframeCube);
+
+const vertexSphereGeometry = new THREE.SphereGeometry(0.01, 12, 12);
+const vertexSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+
+const cubeVertices = cubeGeometry.attributes.position;
+for (let i = 0; i < cubeVertices.count; i++) {
+    const vertex = new THREE.Vector3().fromBufferAttribute(cubeVertices, i);
+    const sphere = new THREE.Mesh(vertexSphereGeometry, vertexSphereMaterial);
+    sphere.position.copy(vertex);
+    wireframeCube.add(sphere);
+}
+/* >>> FIN BLOQUE DEL CUBO MODIFICADO <<< */
+
+/* >>> CÍRCULO EN LA CARA INFERIOR DEL CUBO <<< */
+const circleRadius = cubeSize / 2;
+const circleSegments = 64;
+
+// Crear el círculo en la cara inferior (y = -cubeSize/2)
+const circleGeometry = new THREE.CircleGeometry(circleRadius, circleSegments);
+const circleMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xffffff,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0, 
+    wireframe: false
+});
+
+const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+circle.rotation.x = Math.PI / 2; // Rotar para que quede horizontal
+circle.position.y = -cubeSize/2; // Posicionar en la cara inferior
+wireframeCube.add(circle);
+
+// Línea del borde del círculo (stroke)
+const circleEdges = new THREE.EdgesGeometry(circleGeometry);
+const circleLineMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    linewidth: 0.01,
+    transparent: true,
+    opacity: 0.2
+});
+const circleLine = new THREE.LineSegments(circleEdges, circleLineMaterial);
+circleLine.rotation.x = Math.PI / 2;
+circleLine.position.y = -cubeSize/2 + 0.01; // Ligeramente por encima para evitar z-fighting
+wireframeCube.add(circleLine);
+
+/* >>> ESFERA ORBITANTE MODIFICADA (BLANCA) <<< */
+const smallSphereGeometry = new THREE.SphereGeometry(0.01, 16, 16);
+const smallSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff});
+const orbitingSphere = new THREE.Mesh(smallSphereGeometry, smallSphereMaterial);
+wireframeCube.add(orbitingSphere);
+
+// Variable para controlar la animación de la esfera
+let orbitAngle = 0;
+const orbitSpeed = 0.02;
+const orbitHeight = -cubeSize/2 + 0.02; // Misma altura que el círculo
+
+
+// Luces 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
 directionalLight.position.set(0, 2, 2);
 scene.add(directionalLight);
 
-const ambientLight = new THREE.AmbientLight(0x404040);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
 scene.add(ambientLight);
 
 const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -257,13 +319,25 @@ function animate() {
         vit.needsUpdate = true;
     }
 
+    // Animación de la esfera que gira alrededor del círculo
+    orbitAngle += orbitSpeed;
+    orbitingSphere.position.x = Math.cos(orbitAngle) * circleRadius;
+    orbitingSphere.position.z = Math.sin(orbitAngle) * circleRadius;
+    orbitingSphere.position.y = orbitHeight;
+
+
     if (isActive) {
         if (!scene.children.includes(cloth)) {
             scene.add(cloth);
         }
+        if (!scene.children.includes(wireframeCube)) {
+            scene.add(wireframeCube);
+        }
+       
 
         timeUniform.value += 0.01;
         updateClothGeometry();
+        cloth.rotation.z += 0.01;
 
         if (messageMesh) {
             messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.1, 0);
@@ -272,6 +346,10 @@ function animate() {
         if (scene.children.includes(cloth)) {
             scene.remove(cloth);
         }
+        if (scene.children.includes(wireframeCube)) {
+            scene.remove(wireframeCube);
+        } 
+
 
         if (messageMesh) {
             messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.1, 1);
@@ -320,6 +398,7 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(1280, 1080);
 });
+
 
 // const socket = new WebSocket('ws://localhost:3000');
 const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
