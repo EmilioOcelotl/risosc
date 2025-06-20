@@ -4,10 +4,13 @@ const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../web')));
+// 1. Servir archivos estáticos desde web/src
+app.use(express.static(path.join(__dirname, '../web/src')));
 
+// 2. Crear servidor HTTP
 const server = http.createServer(app);
+
+// 3. WebSocket
 const wss = new WebSocket.Server({ server });
 
 let clients = [];
@@ -22,6 +25,7 @@ wss.on('connection', ws => {
   });
 });
 
+// 4. Endpoint para NFC
 app.post('/api/nfc', (req, res) => {
   const { nfcIndex } = req.body;
   console.log('NFC recibido:', nfcIndex);
@@ -35,10 +39,7 @@ app.post('/api/nfc', (req, res) => {
   res.status(200).send('ok');
 });
 
-const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(`Servidor en http://localhost:${PORT}`);
-});
+// 5. Endpoint para lanzar viewer desde query param
 app.get('/trigger', (req, res) => {
   const nfcIndex = parseInt(req.query.nfc);
   clients.forEach(client => {
@@ -47,4 +48,10 @@ app.get('/trigger', (req, res) => {
     }
   });
   res.send(`Trigger recibido para índice ${nfcIndex}`);
+});
+
+// 6. Puerto
+const PORT = 3000;
+server.listen(PORT, () => {
+  console.log(`Servidor en http://localhost:${PORT}`);
 });
