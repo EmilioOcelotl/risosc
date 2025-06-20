@@ -30,12 +30,12 @@ wss.on('connection', ws => {
 
 // 4. Endpoint para NFC
 app.post('/api/nfc', (req, res) => {
-  const { nfcIndex } = req.body;
-  console.log('NFC recibido:', nfcIndex);
+  const { index } = req.body;
+  console.log('NFC recibido:', index);
 
   clients.forEach(client => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: 'activate', index: nfcIndex }));
+      client.send(JSON.stringify({ type: 'activate', index: index }));
     }
   });
 
