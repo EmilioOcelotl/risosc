@@ -2,6 +2,7 @@ const leftPanel = document.getElementById('left-panel');
 const rightPanel = document.getElementById('right-panel');
 const hydraCanvas = document.getElementById('hydra-canvas');
 
+/*
 let composer;
 let bloomPass;
 let renderScene;
@@ -11,6 +12,7 @@ let bloomParams = {
     bloomThreshold: 0,
     bloomRadius: 0.1
 };
+*/
 
 // Definimos laconsts 4 texturas de Hydra que queremos usar
 const hydraTextures = [
