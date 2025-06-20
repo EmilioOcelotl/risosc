@@ -107,6 +107,7 @@ osc(10, 0.04, 0.6)
     .out();
 */
 
+/*
 async function createCyberpunkMessage() {
     await document.fonts.ready;
 
@@ -144,11 +145,14 @@ async function createCyberpunkMessage() {
     return messageMesh;
 }
 
+
 let messageMesh;
 createCyberpunkMessage().then(mesh => {
     messageMesh = mesh;
     scene.add(messageMesh);
 });
+
+*/ 
 
 const width = 4;
 const height = 2;
@@ -275,6 +279,7 @@ function animate() {
         timeUniform.value += 0.01;
         updateClothGeometry();
 
+        /*
         if (messageMesh) {
             messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.1, 0);
         }
@@ -282,10 +287,12 @@ function animate() {
         if (scene.children.includes(cloth)) {
             scene.remove(cloth);
         }
+        
 
         if (messageMesh) {
             messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.1, 1);
         }
+            */
     }
 
     controls.update();
