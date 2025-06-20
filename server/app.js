@@ -4,6 +4,9 @@ const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
 
+// ✅ Middleware necesario para leer JSON en POST
+app.use(express.json());
+
 // 1. Servir archivos estáticos desde web/src
 app.use(express.static(path.join(__dirname, '../web/src')));
 
