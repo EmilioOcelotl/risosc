@@ -320,7 +320,9 @@ window.addEventListener('resize', () => {
     renderer.setSize(1280, 1080);
 });
 
-const socket = new WebSocket('ws://localhost:3000');
+// const socket = new WebSocket('ws://localhost:3000');
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const socket = new WebSocket(`${protocol}://${window.location.host}`);
 
 socket.addEventListener('message', function (event) {
     const data = JSON.parse(event.data);
