@@ -148,7 +148,7 @@ async function createCyberpunkMessage() {
 
     function animateNFCIcon() {
         if (nfcVisible) {
-            nfcPulseSize = (nfcPulseSize + 0.005) % 1;
+            nfcPulseSize = (nfcPulseSize + 0.018) % 1;
             nfcPulseOpacity = Math.min(1, nfcPulseOpacity + 0.08);
         } else {
             nfcPulseOpacity = Math.max(0, nfcPulseOpacity - 0.05);
@@ -236,13 +236,13 @@ const edges = new THREE.EdgesGeometry(cubeGeometry);
 const lineMaterial = new THREE.LineBasicMaterial({ 
     color: 0xffffff, 
     transparent: true,
-    opacity: 0.2,
-    linewidth: 0.01
+    opacity: 0.4,
+    linewidth: 4
 });
 const wireframeCube = new THREE.LineSegments(edges, lineMaterial);
 scene.add(wireframeCube);
 
-const vertexSphereGeometry = new THREE.SphereGeometry(0.01, 12, 12);
+const vertexSphereGeometry = new THREE.SphereGeometry(0.02, 12, 12);
 const vertexSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
 const cubeVertices = cubeGeometry.attributes.position;
@@ -279,7 +279,7 @@ const circleLineMaterial = new THREE.LineBasicMaterial({
     color: 0xffffff,
     linewidth: 0.01,
     transparent: true,
-    opacity: 0.2
+    opacity: 0.4
 });
 const circleLine = new THREE.LineSegments(circleEdges, circleLineMaterial);
 circleLine.rotation.x = Math.PI / 2;
@@ -287,7 +287,7 @@ circleLine.position.y = -cubeSize/2 + 0.01; // Ligeramente por encima para evita
 wireframeCube.add(circleLine);
 
 /* >>> ESFERA ORBITANTE MODIFICADA (BLANCA) <<< */
-const smallSphereGeometry = new THREE.SphereGeometry(0.01, 16, 16);
+const smallSphereGeometry = new THREE.SphereGeometry(0.02, 16, 16);
 const smallSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff});
 const orbitingSphere = new THREE.Mesh(smallSphereGeometry, smallSphereMaterial);
 wireframeCube.add(orbitingSphere);
@@ -387,7 +387,7 @@ function updateClothGeometry() {
 
 function animate() {
     requestAnimationFrame(animate);
-
+    
     // Actualizamos la textura solo si hay una activa
     if (currentHydraTexture !== null) {
         vit.needsUpdate = true;
@@ -453,6 +453,7 @@ function setupInteractivity() {
         });
 
         rect.addEventListener('mouseleave', () => {
+            
             setTimeout(() => {
                 if (Date.now() - lastActiveTime > 100) {
                     isActive = false;
