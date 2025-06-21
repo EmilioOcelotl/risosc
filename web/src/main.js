@@ -12,7 +12,7 @@ let bloomParams = {
     bloomRadius: 0.1
 };
 
-// Definimos laconsts 4 texturas de Hydra que queremos usar
+// Definimos las 4 texturas de Hydra que queremos usar
 const hydraTextures = [
     () => {
         osc(10, 0.04, 0.6)
@@ -53,6 +53,10 @@ const hydraTextures = [
 ];
 
 let currentHydraTexture = null;
+let isActive = false;
+let lastActiveTime = 0;
+let isWebSocketActivation = false;
+let activationTimeout = null;
 
 function adjustRectangles() {
     const rectangles = document.querySelectorAll('.rectangle');
@@ -67,7 +71,7 @@ function adjustRectangles() {
     rectangles.forEach((rect, index) => {
         rect.style.width = `${rectWidth}px`;
         rect.style.height = `${rectHeight}px`;
-        rect.dataset.textureIndex = index; // Asignamos un índice a cada rectángulo
+        rect.dataset.textureIndex = index;
     });
 }
 
@@ -87,6 +91,7 @@ const hydra = new Hydra({
 // Inicializamos con la primera textura
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
+
 async function createCyberpunkMessage() {
     await document.fonts.ready;
 
@@ -95,51 +100,42 @@ async function createCyberpunkMessage() {
     canvas.height = 720;
     const ctx = canvas.getContext('2d');
     
-    // Fondo transparente
     ctx.fillStyle = 'rgba(0, 0, 0, 0)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Variables de animación
     let nfcPulseSize = 0;
     let nfcPulseOpacity = 0;
     let nfcVisible = false;
     const centerX = canvas.width / 2;
     const centerY = canvas.height / 2;
-    const nfcY = centerY + 240; // Posición vertical del icono NFC
+    const nfcY = centerY + 240;
 
     function drawNFCAnimation() {
-        // Limpiar área del NFC
         ctx.clearRect(0, centerY + 80, canvas.width, 250);
 
         if (!nfcVisible) return;
-        // Ángulo de apertura (45 grados en radianes = ~0.785)
-        const startAngle = Math.PI + (Math.PI - 0.785)/2.5;  // ~2.75 (247.5°)
-        const endAngle = 0 - (Math.PI - 0.785)/2.5;         // ~-0.39 (-22.5°)
+        
+        const startAngle = Math.PI + (Math.PI - 0.785)/2.5;
+        const endAngle = 0 - (Math.PI - 0.785)/2.5;
     
-        // 1. Círculo exterior grande (nuevo)
         ctx.beginPath();
         ctx.arc(centerX, nfcY, 60 + nfcPulseSize * 20, startAngle, endAngle, false);
         ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
         ctx.lineWidth = 4;
         ctx.stroke();
 
-        // 2. Círculo mediano (onda de pulso)
         ctx.beginPath();
         ctx.arc(centerX, nfcY, 45 + nfcPulseSize * 15, startAngle, endAngle, false);
         ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
         ctx.lineWidth = 4;
         ctx.stroke();
 
-        // 3. Círculo pequeño (centro NFC)
         ctx.beginPath();
         ctx.arc(centerX, nfcY, 30 + nfcPulseSize * 10, startAngle, endAngle, false);
         ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
         ctx.lineWidth = 4;
         ctx.stroke();
 
-       
-
-        // Texto "NFC"
         ctx.font = 'bold 36px Orbitron';
         ctx.textAlign = 'center';
         ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
@@ -161,20 +157,17 @@ async function createCyberpunkMessage() {
     }
 
     function drawMainText() {
-        // Texto principal
         ctx.font = 'bold 80px Orbitron';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = 'rgba(255, 255, 255, 1)';
         ctx.fillText('ACERCA EL DISPOSITIVO', centerX, centerY - 50);
 
-        // Texto secundario
         ctx.font = 'bold 42px Orbitron';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.fillText('al icono NFC para activar la experiencia', centerX, centerY + 30);
     }
 
-    // Dibujo inicial
     drawMainText();
 
     const texture = new THREE.CanvasTexture(canvas);
@@ -189,10 +182,8 @@ async function createCyberpunkMessage() {
     messageMesh.position.z = 0.5;
     messageMesh.position.y = 0;
 
-    // Iniciar animación
     animateNFCIcon();
 
-    // Control de visibilidad
     messageMesh.showNFC = function(show) {
         nfcVisible = show;
     };
@@ -228,7 +219,6 @@ cloth.rotation.x = -Math.PI / 4;
 cloth.rotation.z += 0.01;
 cloth.position.z = 0;
 
-/* >>>  BLOQUE DEL CUBO MODIFICADO <<< */
 const cubeSize = 3;
 const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
 
@@ -252,13 +242,9 @@ for (let i = 0; i < cubeVertices.count; i++) {
     sphere.position.copy(vertex);
     wireframeCube.add(sphere);
 }
-/* >>> FIN BLOQUE DEL CUBO MODIFICADO <<< */
 
-/* >>> CÍRCULO EN LA CARA INFERIOR DEL CUBO <<< */
 const circleRadius = cubeSize / 2;
 const circleSegments = 64;
-
-// Crear el círculo en la cara inferior (y = -cubeSize/2)
 const circleGeometry = new THREE.CircleGeometry(circleRadius, circleSegments);
 const circleMaterial = new THREE.MeshBasicMaterial({ 
     color: 0xffffff,
@@ -269,11 +255,10 @@ const circleMaterial = new THREE.MeshBasicMaterial({
 });
 
 const circle = new THREE.Mesh(circleGeometry, circleMaterial);
-circle.rotation.x = Math.PI / 2; // Rotar para que quede horizontal
-circle.position.y = -cubeSize/2; // Posicionar en la cara inferior
+circle.rotation.x = Math.PI / 2;
+circle.position.y = -cubeSize/2;
 wireframeCube.add(circle);
 
-// Línea del borde del círculo (stroke)
 const circleEdges = new THREE.EdgesGeometry(circleGeometry);
 const circleLineMaterial = new THREE.LineBasicMaterial({
     color: 0xffffff,
@@ -283,22 +268,18 @@ const circleLineMaterial = new THREE.LineBasicMaterial({
 });
 const circleLine = new THREE.LineSegments(circleEdges, circleLineMaterial);
 circleLine.rotation.x = Math.PI / 2;
-circleLine.position.y = -cubeSize/2 + 0.01; // Ligeramente por encima para evitar z-fighting
+circleLine.position.y = -cubeSize/2 + 0.01;
 wireframeCube.add(circleLine);
 
-/* >>> ESFERA ORBITANTE MODIFICADA (BLANCA) <<< */
 const smallSphereGeometry = new THREE.SphereGeometry(0.02, 16, 16);
 const smallSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff});
 const orbitingSphere = new THREE.Mesh(smallSphereGeometry, smallSphereMaterial);
 wireframeCube.add(orbitingSphere);
 
-// Variable para controlar la animación de la esfera
 let orbitAngle = 0;
 const orbitSpeed = 0.02;
-const orbitHeight = -cubeSize/2 + 0.02; // Misma altura que el círculo
+const orbitHeight = -cubeSize/2 + 0.02;
 
-
-// Luces 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
 directionalLight.position.set(0, 2, 2);
 scene.add(directionalLight);
@@ -388,17 +369,14 @@ function updateClothGeometry() {
 function animate() {
     requestAnimationFrame(animate);
     
-    // Actualizamos la textura solo si hay una activa
     if (currentHydraTexture !== null) {
         vit.needsUpdate = true;
     }
 
-    // Animación de la esfera que gira alrededor del círculo
     orbitAngle += orbitSpeed;
     orbitingSphere.position.x = Math.cos(orbitAngle) * circleRadius;
     orbitingSphere.position.z = Math.sin(orbitAngle) * circleRadius;
     orbitingSphere.position.y = orbitHeight;
-
 
     if (isActive) {
         if (!scene.children.includes(cloth)) {
@@ -407,7 +385,6 @@ function animate() {
         if (!scene.children.includes(wireframeCube)) {
             scene.add(wireframeCube);
         }
-       
 
         timeUniform.value += 0.01;
         updateClothGeometry();
@@ -422,8 +399,7 @@ function animate() {
         }
         if (scene.children.includes(wireframeCube)) {
             scene.remove(wireframeCube);
-        } 
-
+        }
 
         if (messageMesh) {
             messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.1, 1);
@@ -440,22 +416,26 @@ function setupInteractivity() {
             if (messageMesh) {
                 messageMesh.showNFC(true);
             }
-
             
             const textureIndex = parseInt(rect.dataset.textureIndex);
             if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-                // Ejecutamos la función de Hydra correspondiente
                 hydraTextures[textureIndex]();
                 currentHydraTexture = textureIndex;
                 isActive = true;
+                isWebSocketActivation = false;
                 lastActiveTime = Date.now();
+                
+                // Cancelar cualquier timeout previo
+                if (activationTimeout) {
+                    clearTimeout(activationTimeout);
+                    activationTimeout = null;
+                }
             }
         });
 
         rect.addEventListener('mouseleave', () => {
-            
             setTimeout(() => {
-                if (Date.now() - lastActiveTime > 100) {
+                if (Date.now() - lastActiveTime > 100 && !isWebSocketActivation) {
                     isActive = false;
                 }
             }, 100);
@@ -463,8 +443,34 @@ function setupInteractivity() {
     });
 }
 
-let isActive = false;
-let lastActiveTime = 0;
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const socket = new WebSocket(`${protocol}://${window.location.host}`);
+
+socket.addEventListener('message', function (event) {
+    const data = JSON.parse(event.data);
+    if (data.type === 'activate') {
+        isWebSocketActivation = true;
+        const textureIndex = parseInt(data.index);
+        if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+            hydraTextures[textureIndex]();
+            currentHydraTexture = textureIndex;
+            isActive = true;
+            lastActiveTime = Date.now();
+            
+            // Cancelar timeout previo si existe
+            if (activationTimeout) {
+                clearTimeout(activationTimeout);
+            }
+            
+            // Programar desactivación después de 30 segundos
+            activationTimeout = setTimeout(() => {
+                isActive = false;
+                isWebSocketActivation = false;
+                lastActiveTime = Date.now() - 1000;
+            }, 30000);
+        }
+    }
+});
 
 function init() {
     adjustRectangles();
@@ -477,24 +483,6 @@ window.addEventListener('resize', () => {
     camera.aspect = 1280 / 1080;
     camera.updateProjectionMatrix();
     renderer.setSize(1280, 1080);
-});
-
-
-// const socket = new WebSocket('ws://localhost:3000');
-const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const socket = new WebSocket(`${protocol}://${window.location.host}`);
-
-socket.addEventListener('message', function (event) {
-    const data = JSON.parse(event.data);
-    if (data.type === 'activate') {
-        const textureIndex = parseInt(data.index);
-        if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-            hydraTextures[textureIndex]();
-            currentHydraTexture = textureIndex;
-            isActive = true;
-            lastActiveTime = Date.now();
-        }
-    }
 });
 
 init();
