@@ -1,55 +1,56 @@
-const leftPanel = document.getElementById('left-panel');
-const rightPanel = document.getElementById('right-panel');
-const hydraCanvas = document.getElementById('hydra-canvas');
+const leftPanel = document.getElementById("left-panel");
+const rightPanel = document.getElementById("right-panel");
+const hydraCanvas = document.getElementById("hydra-canvas");
 
 let composer;
 let bloomPass;
 let renderScene;
 let bloomParams = {
-    exposure: 1,
-    bloomStrength: 0.1,
-    bloomThreshold: 0,
-    bloomRadius: 0.1
+  exposure: 1,
+  bloomStrength: 0.1,
+  bloomThreshold: 0,
+  bloomRadius: 0.1,
 };
 
 // Definimos las 4 texturas de Hydra que queremos usar
 const hydraTextures = [
-    () => {
-        osc(10, 0.04, 0.6)
-            .color(0.9 * 2, 0.8 * 4, 1.5)
-            .modulate(noise(0.1, 0.2).rotate(0.1, 0.2).scale(1.01), 0.2)
-            .modulate(src(o0).scale(1.1).rotate(0.1), 0.2)
-            .invert()
-            .saturate(1.1)
-            .out();
-    },
-    () => {
-       osc(15, 0.1, 0.8)
-        .color(0.8*4, 0.9*2, 2)
-        .modulate(noise(3, 0.1).rotate(0.1, 0.02).scale(1.1),0.1)
-        .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
-        .invert()
-        .saturate(1.1)
-        .out()
-    },
-    () => {
-          osc(19, 0.4, 0.4)
-            .color( 1.5, 0.9*8,0.8*4)
-            .modulate(noise(1, 0.1).rotate(0.1, 0.02).scale(1.01),0.5)
-            .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
-            .invert()
-            .saturate(1.1)
-            .out()
-    },
-    () => {
-          osc(12, 0.4, 0.4)
-            .color(1, 0.8*8, 0.9*4)
-            .modulate(noise(1, 0.1).rotate(0.1, 0.02).scale(1.01),0.5)
-            .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
-            .invert()
-            .saturate(1.1)
-            .out()
-    }
+  () => {
+    osc(19, 0.1, 0.4)
+      .color(0.8 * 8, 0.9 * 4, 1)
+      .modulate(noise(3, 0.1).rotate(0.1, 0.02).scale(1.1), 0.1)
+      .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
+      .invert()
+      .saturate(1.1)
+      .hue(2)
+      .out();
+  },
+  () => {
+    osc(10, 0.08, 0.8)
+      .color(1 * 2, 0.8 * 4, 0.9)
+      .modulate(noise(4, 0.1).rotate(0.01, 0.02).scale(1.1), 0.1)
+      .modulate(src(o0).scale(1.1).rotate(0.01), 0.2)
+      .invert()
+      .saturate(1.1)
+      .out();
+  },
+  () => {
+    osc(19, 0.4, 0.4)
+      .color(1.5, 0.9 * 8, 0.8 * 4)
+      .modulate(noise(1, 0.1).rotate(0.1, 0.02).scale(1.01), 0.5)
+      .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
+      .invert()
+      .saturate(1.1)
+      .out();
+  },
+  () => {
+    osc(10, 0.14, 0.4)
+      .color(2, 0.9 * 8, 0.8 * 4)
+      .modulate(voronoi(0.8, 0.1).rotate(0.01, 0.02).scale(1.01), 0.3)
+      .modulate(src(o0).scale(1.1).rotate(0.1), 0.2)
+      .invert()
+      .saturate(1.1)
+      .out();
+  },
 ];
 
 let currentHydraTexture = null;
@@ -59,33 +60,36 @@ let isWebSocketActivation = false;
 let activationTimeout = null;
 
 function adjustRectangles() {
-    const rectangles = document.querySelectorAll('.rectangle');
-    const panelHeight = leftPanel.clientHeight;
-    const gap = 30;
-    const padding = 30;
+  const rectangles = document.querySelectorAll(".rectangle");
+  const panelHeight = leftPanel.clientHeight;
+  const gap = 30;
+  const padding = 30;
 
-    const availableHeight = panelHeight - (2 * padding) - (3 * gap);
-    const rectHeight = availableHeight / 4;
-    const rectWidth = (rectHeight * 3) / 2;
+  const availableHeight = panelHeight - 2 * padding - 3 * gap;
+  const rectHeight = availableHeight / 4;
+  const rectWidth = (rectHeight * 3) / 2;
 
-    rectangles.forEach((rect, index) => {
-        rect.style.width = `${rectWidth}px`;
-        rect.style.height = `${rectHeight}px`;
-        rect.dataset.textureIndex = index;
-    });
+  rectangles.forEach((rect, index) => {
+    rect.style.width = `${rectWidth}px`;
+    rect.style.height = `${rectHeight}px`;
+    rect.dataset.textureIndex = index;
+  });
 }
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 const camera = new THREE.PerspectiveCamera(75, 1280 / 1080, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: "high-performance",
+});
 renderer.setSize(1280, 1080);
 rightPanel.appendChild(renderer.domElement);
 
 const hydra = new Hydra({
-    canvas: hydraCanvas,
-    autoLoop: true,
-    detectAudio: false
+  canvas: hydraCanvas,
+  autoLoop: true,
+  detectAudio: false,
 });
 
 // Inicializamos con la primera textura
@@ -93,108 +97,155 @@ hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
 
 async function createCyberpunkMessage() {
-    await document.fonts.ready;
+  const textAlternatives = [
+    { static: "ACERCA EL", dynamic: "TELÉFONO" },
+    { static: "MUEVE EL", dynamic: "MOUSE" },
+  ];
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 1280;
-    canvas.height = 720;
-    const ctx = canvas.getContext('2d');
-    
-    ctx.fillStyle = 'rgba(0, 0, 0, 0)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  let phraseIndex = 0;
+  let fading = false;
+  let fadeProgress = 0;
 
-    let nfcPulseSize = 0;
-    let nfcPulseOpacity = 0;
-    let nfcVisible = false;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const nfcY = centerY + 240;
+  await document.fonts.ready;
 
-    function drawNFCAnimation() {
-        ctx.clearRect(0, centerY + 80, canvas.width, 250);
+  const canvas = document.createElement("canvas");
+  canvas.width = 1280;
+  canvas.height = 720;
+  const ctx = canvas.getContext("2d");
 
-        if (!nfcVisible) return;
-        
-        const startAngle = Math.PI + (Math.PI - 0.785)/2.5;
-        const endAngle = 0 - (Math.PI - 0.785)/2.5;
-    
-        ctx.beginPath();
-        ctx.arc(centerX, nfcY, 60 + nfcPulseSize * 20, startAngle, endAngle, false);
-        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-        ctx.lineWidth = 4;
-        ctx.stroke();
+  ctx.fillStyle = "rgba(0, 0, 0, 0)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.beginPath();
-        ctx.arc(centerX, nfcY, 45 + nfcPulseSize * 15, startAngle, endAngle, false);
-        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-        ctx.lineWidth = 4;
-        ctx.stroke();
+  let nfcPulseSize = 0;
+  let nfcPulseOpacity = 0;
+  let nfcVisible = false;
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const nfcY = centerY + 240;
 
-        ctx.beginPath();
-        ctx.arc(centerX, nfcY, 30 + nfcPulseSize * 10, startAngle, endAngle, false);
-        ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-        ctx.lineWidth = 4;
-        ctx.stroke();
+  function drawNFCAnimation() {
+    ctx.clearRect(0, centerY + 80, canvas.width, 250);
 
-        ctx.font = 'bold 36px Orbitron';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
-        ctx.fillText('NFC', centerX, nfcY + 50);
+    if (!nfcVisible) return;
+
+    const startAngle = Math.PI + (Math.PI - 0.785) / 2.5;
+    const endAngle = 0 - (Math.PI - 0.785) / 2.5;
+
+    ctx.beginPath();
+    ctx.arc(centerX, nfcY, 60 + nfcPulseSize * 20, startAngle, endAngle, false);
+    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(centerX, nfcY, 45 + nfcPulseSize * 15, startAngle, endAngle, false);
+    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(centerX, nfcY, 30 + nfcPulseSize * 10, startAngle, endAngle, false);
+    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.font = "bold 36px Orbitron";
+    ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
+    ctx.fillText("NFC", centerX, nfcY + 50);
+  }
+
+  function animateNFCIcon() {
+    if (nfcVisible) {
+      nfcPulseSize = (nfcPulseSize + 0.018) % 1;
+      nfcPulseOpacity = Math.min(1, nfcPulseOpacity + 0.08);
+    } else {
+      nfcPulseOpacity = Math.max(0, nfcPulseOpacity - 0.05);
     }
 
-    function animateNFCIcon() {
-        if (nfcVisible) {
-            nfcPulseSize = (nfcPulseSize + 0.018) % 1;
-            nfcPulseOpacity = Math.min(1, nfcPulseOpacity + 0.08);
-        } else {
-            nfcPulseOpacity = Math.max(0, nfcPulseOpacity - 0.05);
-        }
-        
-        drawMainText();
-        drawNFCAnimation();
-        texture.needsUpdate = true;
-        requestAnimationFrame(animateNFCIcon);
-    }
-
-    function drawMainText() {
-        ctx.font = 'bold 80px Orbitron';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'rgba(255, 255, 255, 1)';
-        ctx.fillText('ACERCA EL DISPOSITIVO', centerX, centerY - 50);
-
-        ctx.font = 'bold 42px Orbitron';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillText('al icono NFC para activar la experiencia', centerX, centerY + 30);
+    if (fading) {
+      fadeProgress += 0.05;
+      if (fadeProgress >= 1) {
+        fadeProgress = 0;
+        fading = false;
+        phraseIndex = (phraseIndex + 1) % textAlternatives.length;
+      }
     }
 
     drawMainText();
+    drawNFCAnimation();
+    texture.needsUpdate = true;
+    requestAnimationFrame(animateNFCIcon);
+  }
 
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 1.0
-    });
+  setInterval(() => {
+    if (!fading) fading = true;
+  }, 4000);
 
-    const geometry = new THREE.PlaneGeometry(3, 1.5);
-    const messageMesh = new THREE.Mesh(geometry, material);
-    messageMesh.position.z = 0.5;
-    messageMesh.position.y = 0;
+  function drawMainText() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    animateNFCIcon();
+    // TÍTULO FIJO
+    ctx.font = "bold 100px Orbitron";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, 1)";
+    ctx.fillText("RisOSC", centerX, centerY - 300);
 
-    messageMesh.showNFC = function(show) {
-        nfcVisible = show;
-    };
+    // Obtener frase actual
+    const current = textAlternatives[phraseIndex];
+    const fullLine = `${current.static} ${current.dynamic}`;
+    const lineY = centerY - 50;
 
-    return messageMesh;
+    ctx.font = "bold 60px Orbitron";
+
+    // Opacidad para fade
+    const opacity = fading ? 1 - fadeProgress : 1;
+    ctx.globalAlpha = opacity;
+
+    // CENTRAR FRASE COMPLETA
+    ctx.textAlign = "center";
+    ctx.fillStyle = "rgba(255, 255, 255, 1)";
+    ctx.fillText(fullLine, centerX, lineY);
+    ctx.globalAlpha = 1;
+
+    // SUBTEXTO
+    ctx.font = "bold 42px Orbitron";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.fillText(
+      "sobre icono NFC para activar la experiencia",
+      centerX,
+      centerY + 30
+    );
+  }
+
+  drawMainText();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    opacity: 1.0,
+  });
+
+  const geometry = new THREE.PlaneGeometry(3, 1.5);
+  const messageMesh = new THREE.Mesh(geometry, material);
+  messageMesh.position.z = 0.5;
+  messageMesh.position.y = 0;
+
+  animateNFCIcon();
+
+  messageMesh.showNFC = function (show) {
+    nfcVisible = show;
+  };
+
+  return messageMesh;
 }
 
 let messageMesh;
-createCyberpunkMessage().then(mesh => {
-    messageMesh = mesh;
-    scene.add(messageMesh);
+createCyberpunkMessage().then((mesh) => {
+  messageMesh = mesh;
+  scene.add(messageMesh);
 });
 
 const width = 4;
@@ -203,15 +254,15 @@ const segments = 200;
 const geometry = new THREE.PlaneGeometry(width, height, segments, segments);
 
 const material = new THREE.MeshPhongMaterial({
-    color: 0xffffff,
-    specular: 0x222222,
-    shininess: 30,
-    emissive: 0x000000,
-    emissiveIntensity: 0,
-    map: vit,
-    reflectivity: 0.9,
-    combine: THREE.MixOperation,
-    shading: THREE.SmoothShading
+  color: 0xffffff,
+  specular: 0x222222,
+  shininess: 30,
+  emissive: 0x000000,
+  emissiveIntensity: 0,
+  map: vit,
+  reflectivity: 0.9,
+  combine: THREE.MixOperation,
+  shading: THREE.SmoothShading,
 });
 
 const cloth = new THREE.Mesh(geometry, material);
@@ -223,11 +274,11 @@ const cubeSize = 3;
 const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
 
 const edges = new THREE.EdgesGeometry(cubeGeometry);
-const lineMaterial = new THREE.LineBasicMaterial({ 
-    color: 0xffffff, 
-    transparent: true,
-    opacity: 0.4,
-    linewidth: 4
+const lineMaterial = new THREE.LineBasicMaterial({
+  color: 0xffffff,
+  transparent: true,
+  opacity: 0.4,
+  linewidth: 4,
 });
 const wireframeCube = new THREE.LineSegments(edges, lineMaterial);
 scene.add(wireframeCube);
@@ -237,48 +288,48 @@ const vertexSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 
 const cubeVertices = cubeGeometry.attributes.position;
 for (let i = 0; i < cubeVertices.count; i++) {
-    const vertex = new THREE.Vector3().fromBufferAttribute(cubeVertices, i);
-    const sphere = new THREE.Mesh(vertexSphereGeometry, vertexSphereMaterial);
-    sphere.position.copy(vertex);
-    wireframeCube.add(sphere);
+  const vertex = new THREE.Vector3().fromBufferAttribute(cubeVertices, i);
+  const sphere = new THREE.Mesh(vertexSphereGeometry, vertexSphereMaterial);
+  sphere.position.copy(vertex);
+  wireframeCube.add(sphere);
 }
 
 const circleRadius = cubeSize / 2;
 const circleSegments = 64;
 const circleGeometry = new THREE.CircleGeometry(circleRadius, circleSegments);
-const circleMaterial = new THREE.MeshBasicMaterial({ 
-    color: 0xffffff,
-    side: THREE.DoubleSide,
-    transparent: true,
-    opacity: 0, 
-    wireframe: false
+const circleMaterial = new THREE.MeshBasicMaterial({
+  color: 0xffffff,
+  side: THREE.DoubleSide,
+  transparent: true,
+  opacity: 0,
+  wireframe: false,
 });
 
 const circle = new THREE.Mesh(circleGeometry, circleMaterial);
 circle.rotation.x = Math.PI / 2;
-circle.position.y = -cubeSize/2;
+circle.position.y = -cubeSize / 2;
 wireframeCube.add(circle);
 
 const circleEdges = new THREE.EdgesGeometry(circleGeometry);
 const circleLineMaterial = new THREE.LineBasicMaterial({
-    color: 0xffffff,
-    linewidth: 0.01,
-    transparent: true,
-    opacity: 0.4
+  color: 0xffffff,
+  linewidth: 0.01,
+  transparent: true,
+  opacity: 0.4,
 });
 const circleLine = new THREE.LineSegments(circleEdges, circleLineMaterial);
 circleLine.rotation.x = Math.PI / 2;
-circleLine.position.y = -cubeSize/2 + 0.01;
+circleLine.position.y = -cubeSize / 2 + 0.01;
 wireframeCube.add(circleLine);
 
 const smallSphereGeometry = new THREE.SphereGeometry(0.02, 16, 16);
-const smallSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff});
+const smallSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const orbitingSphere = new THREE.Mesh(smallSphereGeometry, smallSphereMaterial);
 wireframeCube.add(orbitingSphere);
 
 let orbitAngle = 0;
 const orbitSpeed = 0.02;
-const orbitHeight = -cubeSize/2 + 0.02;
+const orbitHeight = -cubeSize / 2 + 0.02;
 
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
 directionalLight.position.set(0, 2, 2);
@@ -296,193 +347,233 @@ const timeUniform = { value: 0 };
 const originalPositions = geometry.attributes.position.array.slice();
 
 function multiWave(x, y, t) {
-    const wave1 = Math.sin(x * 4.0 + t * 1.0) * 0.3;
-    const wave2 = Math.cos(x * 3.5 + y * 2.0 + t * 1.3) * 0.2;
-    const wave3 = Math.sin(x * 1.0 + y * 1.5 + t * 0.7) * 0.8;
-    const wave4 = Math.sin(x * 5.2 + y * 3.7 + t * 1.7) *
-        Math.cos(x * 2.3 + y * 1.9 + t * 0.9) * 0.05;
-    return wave1 + wave2 * wave3 + wave4;
+  const wave1 = Math.sin(x * 4.0 + t * 1.0) * 0.3;
+  const wave2 = Math.cos(x * 3.5 + y * 2.0 + t * 1.3) * 0.2;
+  const wave3 = Math.sin(x * 1.0 + y * 1.5 + t * 0.7) * 0.8;
+  const wave4 =
+    Math.sin(x * 5.2 + y * 3.7 + t * 1.7) *
+    Math.cos(x * 2.3 + y * 1.9 + t * 0.9) *
+    0.05;
+  return wave1 + wave2 * wave3 + wave4;
 }
 
 function smoothstep(min, max, value) {
-    const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-    return x * x * (3 - 2 * x);
+  const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+  return x * x * (3 - 2 * x);
 }
 
 function updateClothGeometry() {
-    const positions = cloth.geometry.attributes.position;
-    const canvas = document.createElement('canvas');
-    canvas.width = hydraCanvas.width;
-    canvas.height = hydraCanvas.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(hydraCanvas, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
+  const positions = cloth.geometry.attributes.position;
+  const canvas = document.createElement("canvas");
+  canvas.width = hydraCanvas.width;
+  canvas.height = hydraCanvas.height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(hydraCanvas, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
 
-    const colorInfluence = 0.25;
-    const smoothingRadius = 0.25;
+  const colorInfluence = 0.25;
+  const smoothingRadius = 0.25;
 
-    for (let i = 0; i < positions.count; i++) {
-        const ix = i * 3;
-        const iy = i * 3 + 1;
-        const iz = i * 3 + 2;
+  for (let i = 0; i < positions.count; i++) {
+    const ix = i * 3;
+    const iy = i * 3 + 1;
+    const iz = i * 3 + 2;
 
-        const x = originalPositions[ix];
-        const y = originalPositions[iy];
+    const x = originalPositions[ix];
+    const y = originalPositions[iy];
 
-        const u = (x / width + 0.5);
-        const v = (y / height + 0.5);
+    const u = x / width + 0.5;
+    const v = y / height + 0.5;
 
-        let totalR = 0, totalG = 0, totalB = 0;
-        let sampleCount = 0;
+    let totalR = 0,
+      totalG = 0,
+      totalB = 0;
+    let sampleCount = 0;
 
-        for (let dx = -smoothingRadius; dx <= smoothingRadius; dx++) {
-            for (let dy = -smoothingRadius; dy <= smoothingRadius; dy++) {
-                const px = Math.floor(u * (canvas.width - 1)) + dx;
-                const py = Math.floor((1 - v) * (canvas.height - 1)) + dy;
+    for (let dx = -smoothingRadius; dx <= smoothingRadius; dx++) {
+      for (let dy = -smoothingRadius; dy <= smoothingRadius; dy++) {
+        const px = Math.floor(u * (canvas.width - 1)) + dx;
+        const py = Math.floor((1 - v) * (canvas.height - 1)) + dy;
 
-                if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
-                    const pixelIndex = (py * canvas.width + px) * 4;
-                    totalR += data[pixelIndex];
-                    totalG += data[pixelIndex + 1];
-                    totalB += data[pixelIndex + 2];
-                    sampleCount++;
-                }
-            }
+        if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
+          const pixelIndex = (py * canvas.width + px) * 4;
+          totalR += data[pixelIndex];
+          totalG += data[pixelIndex + 1];
+          totalB += data[pixelIndex + 2];
+          sampleCount++;
         }
-
-        const r = totalR / sampleCount / 255;
-        const g = totalG / sampleCount / 255;
-        const b = totalB / sampleCount / 255;
-        const intensity = smoothstep(0.2, 0.8, (r * 0.3 + g * 0.6 + b * 0.1));
-        const waveDisplacement = multiWave(x, y, timeUniform.value);
-
-        positions.array[iz] = waveDisplacement + (intensity - 0.5) * colorInfluence;
-        positions.array[ix] = x + Math.sin(y * 2.0 + timeUniform.value * 1.5) * 0.01;
-        positions.array[iy] = y + Math.cos(x * 1.7 + timeUniform.value * 1.2) * 0.01;
+      }
     }
 
-    positions.needsUpdate = true;
-    cloth.geometry.computeVertexNormals();
+    const r = totalR / sampleCount / 255;
+    const g = totalG / sampleCount / 255;
+    const b = totalB / sampleCount / 255;
+    const intensity = smoothstep(0.2, 0.8, r * 0.3 + g * 0.6 + b * 0.1);
+    const waveDisplacement = multiWave(x, y, timeUniform.value);
+
+    positions.array[iz] = waveDisplacement + (intensity - 0.5) * colorInfluence;
+    positions.array[ix] =
+      x + Math.sin(y * 2.0 + timeUniform.value * 1.5) * 0.01;
+    positions.array[iy] =
+      y + Math.cos(x * 1.7 + timeUniform.value * 1.2) * 0.01;
+  }
+
+  positions.needsUpdate = true;
+  cloth.geometry.computeVertexNormals();
 }
 
 function animate() {
-    requestAnimationFrame(animate);
-    
-    if (currentHydraTexture !== null) {
-        vit.needsUpdate = true;
+  requestAnimationFrame(animate);
+
+  if (currentHydraTexture !== null) {
+    vit.needsUpdate = true;
+  }
+
+  orbitAngle += orbitSpeed;
+  orbitingSphere.position.x = Math.cos(orbitAngle) * circleRadius;
+  orbitingSphere.position.z = Math.sin(orbitAngle) * circleRadius;
+  orbitingSphere.position.y = orbitHeight;
+
+  if (isActive) {
+    if (!scene.children.includes(cloth)) {
+      scene.add(cloth);
+    }
+    if (!scene.children.includes(wireframeCube)) {
+      scene.add(wireframeCube);
     }
 
-    orbitAngle += orbitSpeed;
-    orbitingSphere.position.x = Math.cos(orbitAngle) * circleRadius;
-    orbitingSphere.position.z = Math.sin(orbitAngle) * circleRadius;
-    orbitingSphere.position.y = orbitHeight;
+    timeUniform.value += 0.01;
+    updateClothGeometry();
+    cloth.rotation.z += 0.01;
 
-    if (isActive) {
-        if (!scene.children.includes(cloth)) {
-            scene.add(cloth);
-        }
-        if (!scene.children.includes(wireframeCube)) {
-            scene.add(wireframeCube);
-        }
-
-        timeUniform.value += 0.01;
-        updateClothGeometry();
-        cloth.rotation.z += 0.01;
-
-        if (messageMesh) {
-            messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.1, 0);
-        }
-    } else {
-        if (scene.children.includes(cloth)) {
-            scene.remove(cloth);
-        }
-        if (scene.children.includes(wireframeCube)) {
-            scene.remove(wireframeCube);
-        }
-
-        if (messageMesh) {
-            messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.1, 1);
-        }
+    if (messageMesh) {
+      messageMesh.material.opacity = Math.max(
+        messageMesh.material.opacity - 0.1,
+        0
+      );
+    }
+  } else {
+    if (scene.children.includes(cloth)) {
+      scene.remove(cloth);
+    }
+    if (scene.children.includes(wireframeCube)) {
+      scene.remove(wireframeCube);
     }
 
-    controls.update();
-    renderer.render(scene, camera);
+    if (messageMesh) {
+      messageMesh.material.opacity = Math.min(
+        messageMesh.material.opacity + 0.1,
+        1
+      );
+    }
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
 }
 
 function setupInteractivity() {
-    document.querySelectorAll('.rectangle').forEach(rect => {
-        rect.addEventListener('mouseenter', () => {
-            if (messageMesh) {
-                messageMesh.showNFC(true);
-            }
-            
-            const textureIndex = parseInt(rect.dataset.textureIndex);
-            if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-                hydraTextures[textureIndex]();
-                currentHydraTexture = textureIndex;
-                isActive = true;
-                isWebSocketActivation = false;
-                lastActiveTime = Date.now();
-                
-                // Cancelar cualquier timeout previo
-                if (activationTimeout) {
-                    clearTimeout(activationTimeout);
-                    activationTimeout = null;
-                }
-            }
-        });
+  const rectangles = document.querySelectorAll(".rectangle");
 
-        rect.addEventListener('mouseleave', () => {
-            setTimeout(() => {
-                if (Date.now() - lastActiveTime > 100 && !isWebSocketActivation) {
-                    isActive = false;
-                }
-            }, 100);
-        });
+  rectangles.forEach((rect) => {
+    rect.addEventListener("mouseenter", () => {
+      // Mostrar NFC si existe
+      if (messageMesh) {
+        messageMesh.showNFC(true);
+      }
+
+      // Oculta círculos y cambia color de fondo de todos
+      rectangles.forEach((r) => {
+        r.classList.add("hide-circles");
+        r.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+      });
+
+      // Muestra círculos solo del hovered
+      rect.classList.remove("hide-circles");
+      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+
+      // Cambiar textura Hydra
+      const textureIndex = parseInt(rect.dataset.textureIndex);
+      if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+        hydraTextures[textureIndex]();
+        currentHydraTexture = textureIndex;
+        isActive = true;
+        isWebSocketActivation = false;
+        lastActiveTime = Date.now();
+
+        // Cancelar timeout previo si existe
+        if (activationTimeout) {
+          clearTimeout(activationTimeout);
+        }
+
+        // Programar desactivación después de 30 segundos
+        activationTimeout = setTimeout(() => {
+          isActive = false;
+          lastActiveTime = Date.now() - 1000;
+        }, 30000);
+      }
     });
+
+    rect.addEventListener("mouseleave", () => {
+      setTimeout(() => {
+        if (Date.now() - lastActiveTime > 100 && !isWebSocketActivation) {
+          // No desactivar inmediatamente, el timeout se encargará
+        }
+      }, 100);
+    });
+  });
+
+  // Restaurar todos los círculos al salir del panel completamente
+  const leftPanel = document.getElementById("left-panel");
+  leftPanel.addEventListener("mouseleave", () => {
+    rectangles.forEach((rect) => {
+      rect.classList.remove("hide-circles");
+      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+    });
+  });
 }
 
-const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 const socket = new WebSocket(`${protocol}://${window.location.host}`);
 
-socket.addEventListener('message', function (event) {
-    const data = JSON.parse(event.data);
-    if (data.type === 'activate') {
-        isWebSocketActivation = true;
-        const textureIndex = parseInt(data.index);
-        if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-            hydraTextures[textureIndex]();
-            currentHydraTexture = textureIndex;
-            isActive = true;
-            lastActiveTime = Date.now();
-            
-            // Cancelar timeout previo si existe
-            if (activationTimeout) {
-                clearTimeout(activationTimeout);
-            }
-            
-            // Programar desactivación después de 30 segundos
-            activationTimeout = setTimeout(() => {
-                isActive = false;
-                isWebSocketActivation = false;
-                lastActiveTime = Date.now() - 1000;
-            }, 30000);
-        }
+socket.addEventListener("message", function (event) {
+  const data = JSON.parse(event.data);
+  if (data.type === "activate") {
+    isWebSocketActivation = true;
+    const textureIndex = parseInt(data.index);
+    if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+      hydraTextures[textureIndex]();
+      currentHydraTexture = textureIndex;
+      isActive = true;
+      lastActiveTime = Date.now();
+
+      // Cancelar timeout previo si existe
+      if (activationTimeout) {
+        clearTimeout(activationTimeout);
+      }
+
+      // Programar desactivación después de 30 segundos
+      activationTimeout = setTimeout(() => {
+        isActive = false;
+        isWebSocketActivation = false;
+        lastActiveTime = Date.now() - 1000;
+      }, 30000);
     }
+  }
 });
 
 function init() {
-    adjustRectangles();
-    setupInteractivity();
-    animate();
+  adjustRectangles();
+  setupInteractivity();
+  animate();
 }
 
-window.addEventListener('resize', () => {
-    adjustRectangles();
-    camera.aspect = 1280 / 1080;
-    camera.updateProjectionMatrix();
-    renderer.setSize(1280, 1080);
+window.addEventListener("resize", () => {
+  adjustRectangles();
+  camera.aspect = 1280 / 1080;
+  camera.updateProjectionMatrix();
+  renderer.setSize(1280, 1080);
 });
 
 init();

@@ -13,8 +13,14 @@ RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 
 ## Pendientes
 
-- [ ] Que la animación tenga una duración y después de cierto tiempo que regrese
+- [ ] Carrusel de instrucciones 
+- [ ] Estilo invitando a la interacción
 - [ ] Escribir y probar el resto de los nfcs
-- [ ] Agregar un audio para el estado de escucha y otro para los renders
+- [ ] Sketch de Hydra más interesantes y compatibles 
 - [ ] Hacer el control. 
+    - [ ] Soldar Arduino
+    - [ ] Probar NFC
+    - [ ] Probar lectura y envío web 
+    - [ ] Soldar y probar carga con pila
+    - [ ] LEDs
 
