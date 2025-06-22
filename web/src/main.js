@@ -343,8 +343,17 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 camera.position.set(0, 0, 4);
 
+const initialCameraPosition = camera.position.clone();
+const initialTarget = controls.target.clone();
+
 const timeUniform = { value: 0 };
 const originalPositions = geometry.attributes.position.array.slice();
+
+function resetCameraPosition() {
+  camera.position.copy(initialCameraPosition);
+  controls.target.copy(initialTarget);
+  controls.update();
+}
 
 function multiWave(x, y, t) {
   const wave1 = Math.sin(x * 4.0 + t * 1.0) * 0.3;
@@ -511,6 +520,7 @@ function setupInteractivity() {
         activationTimeout = setTimeout(() => {
           isActive = false;
           lastActiveTime = Date.now() - 1000;
+          resetCameraPosition(); 
         }, 30000);
       }
     });
@@ -558,6 +568,7 @@ socket.addEventListener("message", function (event) {
         isActive = false;
         isWebSocketActivation = false;
         lastActiveTime = Date.now() - 1000;
+        resetCameraPosition(); 
       }, 30000);
     }
   }
