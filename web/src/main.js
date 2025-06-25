@@ -582,9 +582,9 @@ function init() {
 
 window.addEventListener("resize", () => {
   adjustRectangles();
-  camera.aspect = 1280 / 1080;
+  camera.aspect = 1920 / 1080; // esto estaba en 1280x720 revisar si se conserva 
   camera.updateProjectionMatrix();
-  renderer.setSize(1280, 1080);
+  renderer.setSize(1920, 1080);
 });
 
 init();
