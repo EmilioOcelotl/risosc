@@ -1,26 +1,22 @@
+![Texto alternativo](assets/img/risoscbanner.jpg)
+
 # RisOSC
 
 RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 
-- web
-- server
-- firmware 
-- scripts
+- web. Página pública y subpáginas leídas por dispositivos móviles a partir de NFCs. 
+- server. Gestión de envios y despliegues. 
+- firmware. Un control para evitar el uso de un dispositivo móvil en el sitio.
+- scripts. Para ejecutar en una compu con linux de manera automática 
 
 ## Requerimientos
 
-- Computadora servidor. En esta computadora corre la proyeción y el servidor local. 
+- Computadora servidor. En esta computadora corre la proyeción y el servidor local puede ser de cualquier tipo, hay que probar renderización. 
+- Proyector (1920x1080). En caso de que la resolución no coincida, se puede ajustar. 
+- Conexión constante a internet. 
 
-## Pendientes
+## Agradecimientos
 
-- [ ] Carrusel de instrucciones 
-- [ ] Estilo invitando a la interacción
-- [ ] Escribir y probar el resto de los nfcs
-- [ ] Sketch de Hydra más interesantes y compatibles 
-- [ ] Hacer el control. 
-    - [ ] Soldar Arduino
-    - [ ] Probar NFC
-    - [ ] Probar lectura y envío web 
-    - [ ] Soldar y probar carga con pila
-    - [ ] LEDs
-
+- Emmanuel Martínez (Algorítmica Íntima)
+- Marianne Teixido (RAM Laboratoria)
+- Editorial Uroboros 
