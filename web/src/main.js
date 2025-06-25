@@ -59,6 +59,27 @@ let lastActiveTime = 0;
 let isWebSocketActivation = false;
 let activationTimeout = null;
 
+function handleInitialNFC() {
+  const params = new URLSearchParams(window.location.search);
+  const nfcIndex = parseInt(params.get('nfc'));
+  
+  if (!isNaN(nfcIndex) && nfcIndex >= 0 && nfcIndex < hydraTextures.length) {
+      hydraTextures[nfcIndex]();
+      currentHydraTexture = nfcIndex;
+      isActive = true;
+      lastActiveTime = Date.now();
+      notifyServer(nfcIndex);
+  }
+}
+
+function notifyServer(index) {
+  fetch('/api/nfc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ index })
+  }).catch(e => console.error('Error notifying server:', e));
+}
+
 function adjustRectangles() {
   const rectangles = document.querySelectorAll(".rectangle");
   const panelHeight = leftPanel.clientHeight;
@@ -432,11 +453,13 @@ function updateClothGeometry() {
   cloth.geometry.computeVertexNormals();
 }
 
+// Reemplazar TODO el contenido de la función animate() por:
+
 function animate() {
   requestAnimationFrame(animate);
 
   if (currentHydraTexture !== null) {
-    vit.needsUpdate = true;
+      vit.needsUpdate = true;
   }
 
   orbitAngle += orbitSpeed;
@@ -445,37 +468,23 @@ function animate() {
   orbitingSphere.position.y = orbitHeight;
 
   if (isActive) {
-    if (!scene.children.includes(cloth)) {
-      scene.add(cloth);
-    }
-    if (!scene.children.includes(wireframeCube)) {
-      scene.add(wireframeCube);
-    }
-
-    timeUniform.value += 0.01;
-    updateClothGeometry();
-    cloth.rotation.z += 0.01;
-
-    if (messageMesh) {
-      messageMesh.material.opacity = Math.max(
-        messageMesh.material.opacity - 0.1,
-        0
-      );
-    }
+      if (!scene.children.includes(cloth)) scene.add(cloth);
+      if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
+      
+      timeUniform.value += 0.01;
+      updateClothGeometry();
+      cloth.rotation.z += 0.01;
+      
+      if (messageMesh) {
+          messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.05, 0);
+      }
   } else {
-    if (scene.children.includes(cloth)) {
-      scene.remove(cloth);
-    }
-    if (scene.children.includes(wireframeCube)) {
-      scene.remove(wireframeCube);
-    }
-
-    if (messageMesh) {
-      messageMesh.material.opacity = Math.min(
-        messageMesh.material.opacity + 0.1,
-        1
-      );
-    }
+      if (scene.children.includes(cloth)) scene.remove(cloth);
+      if (scene.children.includes(wireframeCube)) scene.remove(wireframeCube);
+      
+      if (messageMesh) {
+          messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.05, 1);
+      }
   }
 
   controls.update();
@@ -544,40 +553,49 @@ function setupInteractivity() {
   });
 }
 
-const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+// Reemplazar TODO el bloque del WebSocket actual por:
+
+const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const socket = new WebSocket(`${protocol}://${window.location.host}`);
 
-socket.addEventListener("message", function (event) {
-  const data = JSON.parse(event.data);
-  if (data.type === "activate") {
-    isWebSocketActivation = true;
-    const textureIndex = parseInt(data.index);
-    if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-      hydraTextures[textureIndex]();
-      currentHydraTexture = textureIndex;
-      isActive = true;
-      lastActiveTime = Date.now();
+socket.addEventListener('message', (event) => {
+    try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'activate') {
+            const textureIndex = parseInt(data.index);
+            if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+                hydraTextures[textureIndex]();
+                currentHydraTexture = textureIndex;
+                isActive = true;
+                isWebSocketActivation = true;
+                lastActiveTime = Date.now();
 
-      // Cancelar timeout previo si existe
-      if (activationTimeout) {
-        clearTimeout(activationTimeout);
-      }
-
-      // Programar desactivación después de 30 segundos
-      activationTimeout = setTimeout(() => {
-        isActive = false;
-        isWebSocketActivation = false;
-        lastActiveTime = Date.now() - 1000;
-        resetCameraPosition(); 
-      }, 30000);
+                if (activationTimeout) clearTimeout(activationTimeout);
+                activationTimeout = setTimeout(() => {
+                    isActive = false;
+                    isWebSocketActivation = false;
+                    resetCameraPosition();
+                }, 30000);
+            }
+        }
+    } catch (e) {
+        console.error('Error processing WebSocket message:', e);
     }
-  }
 });
 
 function init() {
+  handleInitialNFC(); // Procesar parámetro NFC al inicio
   adjustRectangles();
   setupInteractivity();
   animate();
+  
+  // Manejar reconexión de WebSocket
+  socket.addEventListener('close', () => {
+      setTimeout(() => {
+          new WebSocket(`${protocol}://${window.location.host}`);
+      }, 5000);
+  });
 }
 
 window.addEventListener("resize", () => {
