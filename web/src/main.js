@@ -44,7 +44,7 @@ function resetInactivityTimeout() {
       isActive = false;
       isWebSocketActivation = false;
       resetCameraPosition();
-      startDemoMode();
+      // startDemoMode();
     }
   }, INACTIVITY_DELAY);
 }
