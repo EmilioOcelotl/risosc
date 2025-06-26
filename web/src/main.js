@@ -12,7 +12,127 @@ let bloomParams = {
   bloomRadius: 0.1,
 };
 
-// Definimos las 4 texturas de Hydra que queremos usar
+function activateTexture(index, fromWebSocket = false) {
+  // Detener el modo demo si está activo
+  if (demoInterval) {
+    stopDemoMode();
+  }
+
+  if (index >= 0 && index < hydraTextures.length) {
+    // Activar la textura correspondiente
+    hydraTextures[index]();
+    currentHydraTexture = index;
+    isActive = true;
+    isWebSocketActivation = fromWebSocket;
+    lastActiveTime = Date.now();
+
+    // Iluminar solo el rectángulo correspondiente
+    illuminateRect(index);
+
+    // Ocultar el mensaje NFC cuando hay textura activa
+    if (messageMesh) {
+      messageMesh.material.opacity = 0;
+    }
+
+    // Reiniciar el timeout de activación para volver al modo demo tras inactividad
+    if (activationTimeout) clearTimeout(activationTimeout);
+    activationTimeout = setTimeout(() => {
+      isActive = false;
+      isWebSocketActivation = false;
+      resetCameraPosition();
+      startDemoMode();
+    }, INACTIVITY_DELAY);
+
+    // Reiniciar también el timeout general de inactividad
+    resetInactivityTimeout();
+  }
+}
+
+
+let inactivityTimeout = null;
+const INACTIVITY_DELAY = 30000; // 30 segundos
+
+function resetInactivityTimeout() {
+  if (inactivityTimeout) clearTimeout(inactivityTimeout);
+  inactivityTimeout = setTimeout(() => {
+    isActive = false;
+    resetCameraPosition();
+    startDemoMode();
+  }, INACTIVITY_DELAY);
+}
+
+let demoInterval = null;
+
+function startDemoMode() {
+  if (demoInterval) return;
+  let demoIndex = 0;
+  let showInstructions = false; // para alternar fases
+
+  // Al iniciar, mostrar instrucciones y todos iluminados
+  if (messageMesh) messageMesh.material.opacity = 1;
+  illuminateAllRects(true);
+
+  demoInterval = setInterval(() => {
+    if (showInstructions) {
+      // Mostrar instrucciones, iluminar todos los rects
+      if (messageMesh) messageMesh.material.opacity = 1;
+      illuminateAllRects(true);
+      isActive = false;
+    } else {
+      // Mostrar mesh y solo iluminar el rect correspondiente
+      hydraTextures[demoIndex]();
+      currentHydraTexture = demoIndex;
+      isActive = true;
+      lastActiveTime = Date.now();
+
+      if (messageMesh) messageMesh.material.opacity = 0;
+      illuminateRect(demoIndex);
+
+      demoIndex = (demoIndex + 1) % hydraTextures.length;
+    }
+
+    // Alternar fase
+    showInstructions = !showInstructions;
+  }, 8000); // cada fase dura 8 segundos
+}
+
+function illuminateAllRects(enable) {
+  const rectangles = document.querySelectorAll(".rectangle");
+  rectangles.forEach((rect) => {
+    rect.classList.remove("hide-circles", "active-circle");
+    if (enable) {
+      rect.classList.add("show-circles");
+      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+    } else {
+      rect.classList.remove("show-circles");
+      rect.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+    }
+  });
+}
+
+
+function illuminateRect(index) {
+  const rectangles = document.querySelectorAll(".rectangle");
+  rectangles.forEach((rect, idx) => {
+    rect.classList.add("hide-circles");
+    rect.classList.remove("manual-override", "show-circles", "active-circle");
+    rect.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+    if (idx === index) {
+      rect.classList.remove("hide-circles");
+      rect.classList.add("active-circle");
+      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+    }
+  });
+}
+
+function stopDemoMode() {
+  if (demoInterval) {
+    clearInterval(demoInterval);
+    demoInterval = null;
+  }
+}
+
+// Definimos las 4 texturas de Hydra
 const hydraTextures = [
   () => {
     osc(19, 0.1, 0.4)
@@ -62,21 +182,20 @@ let activationTimeout = null;
 function handleInitialNFC() {
   const params = new URLSearchParams(window.location.search);
   const nfcIndex = parseInt(params.get('nfc'));
-  
   if (!isNaN(nfcIndex) && nfcIndex >= 0 && nfcIndex < hydraTextures.length) {
-      hydraTextures[nfcIndex]();
-      currentHydraTexture = nfcIndex;
-      isActive = true;
-      lastActiveTime = Date.now();
-      notifyServer(nfcIndex);
+    hydraTextures[nfcIndex]();
+    currentHydraTexture = nfcIndex;
+    isActive = true;
+    lastActiveTime = Date.now();
+    notifyServer(nfcIndex);
   }
 }
 
 function notifyServer(index) {
   fetch('/api/nfc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ index })
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ index }),
   }).catch(e => console.error('Error notifying server:', e));
 }
 
@@ -97,8 +216,11 @@ function adjustRectangles() {
   });
 }
 
+// --- THREE.JS SETUP ---
+
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
+
 const camera = new THREE.PerspectiveCamera(75, 1280 / 1080, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -107,22 +229,25 @@ const renderer = new THREE.WebGLRenderer({
 renderer.setSize(1280, 1080);
 rightPanel.appendChild(renderer.domElement);
 
+// Hydra setup
 const hydra = new Hydra({
   canvas: hydraCanvas,
   autoLoop: true,
   detectAudio: false,
 });
 
-// Inicializamos con la primera textura
+// Inicializamos con la primera textura Hydra
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
 
+// --- CYBERPUNK MESSAGE (THREE.Mesh con CanvasTexture) ---
+
 async function createCyberpunkMessage() {
+  // Texto animado con NFC
   const textAlternatives = [
     { static: "ACERCA EL", dynamic: "TELÉFONO" },
     { static: "MUEVE EL", dynamic: "MOUSE" },
   ];
-
   let phraseIndex = 0;
   let fading = false;
   let fadeProgress = 0;
@@ -134,46 +259,64 @@ async function createCyberpunkMessage() {
   canvas.height = 720;
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "rgba(0, 0, 0, 0)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
   let nfcPulseSize = 0;
   let nfcPulseOpacity = 0;
   let nfcVisible = false;
+
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
   const nfcY = centerY + 240;
 
   function drawNFCAnimation() {
     ctx.clearRect(0, centerY + 80, canvas.width, 250);
-
     if (!nfcVisible) return;
 
     const startAngle = Math.PI + (Math.PI - 0.785) / 2.5;
     const endAngle = 0 - (Math.PI - 0.785) / 2.5;
 
-    ctx.beginPath();
-    ctx.arc(centerX, nfcY, 60 + nfcPulseSize * 20, startAngle, endAngle, false);
-    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
     ctx.lineWidth = 4;
-    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
 
-    ctx.beginPath();
-    ctx.arc(centerX, nfcY, 45 + nfcPulseSize * 15, startAngle, endAngle, false);
-    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-    ctx.lineWidth = 4;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(centerX, nfcY, 30 + nfcPulseSize * 10, startAngle, endAngle, false);
-    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-    ctx.lineWidth = 4;
-    ctx.stroke();
+    [60 + nfcPulseSize * 20, 45 + nfcPulseSize * 15, 30 + nfcPulseSize * 10].forEach(radius => {
+      ctx.beginPath();
+      ctx.arc(centerX, nfcY, radius, startAngle, endAngle, false);
+      ctx.stroke();
+    });
 
     ctx.font = "bold 36px Orbitron";
     ctx.textAlign = "center";
     ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
     ctx.fillText("NFC", centerX, nfcY + 50);
+  }
+
+  function drawMainText() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Título fijo
+    ctx.font = "bold 100px Orbitron";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(255, 255, 255, 1)";
+    ctx.fillText("RisOSC", centerX, centerY - 300);
+
+    // Frase actual
+    const current = textAlternatives[phraseIndex];
+    const fullLine = `${current.static} ${current.dynamic}`;
+    const lineY = centerY - 50;
+
+    // Fade opacity
+    const opacity = fading ? 1 - fadeProgress : 1;
+    ctx.globalAlpha = opacity;
+
+    ctx.font = "bold 60px Orbitron";
+    ctx.fillStyle = "rgba(255, 255, 255, 1)";
+    ctx.fillText(fullLine, centerX, lineY);
+    ctx.globalAlpha = 1;
+
+    // Subtexto
+    ctx.font = "bold 42px Orbitron";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.fillText("sobre icono NFC para activar la experiencia", centerX, centerY + 30);
   }
 
   function animateNFCIcon() {
@@ -203,43 +346,6 @@ async function createCyberpunkMessage() {
     if (!fading) fading = true;
   }, 4000);
 
-  function drawMainText() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // TÍTULO FIJO
-    ctx.font = "bold 100px Orbitron";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText("RisOSC", centerX, centerY - 300);
-
-    // Obtener frase actual
-    const current = textAlternatives[phraseIndex];
-    const fullLine = `${current.static} ${current.dynamic}`;
-    const lineY = centerY - 50;
-
-    ctx.font = "bold 60px Orbitron";
-
-    // Opacidad para fade
-    const opacity = fading ? 1 - fadeProgress : 1;
-    ctx.globalAlpha = opacity;
-
-    // CENTRAR FRASE COMPLETA
-    ctx.textAlign = "center";
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText(fullLine, centerX, lineY);
-    ctx.globalAlpha = 1;
-
-    // SUBTEXTO
-    ctx.font = "bold 42px Orbitron";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText(
-      "sobre icono NFC para activar la experiencia",
-      centerX,
-      centerY + 30
-    );
-  }
-
   drawMainText();
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -264,10 +370,12 @@ async function createCyberpunkMessage() {
 }
 
 let messageMesh;
-createCyberpunkMessage().then((mesh) => {
+createCyberpunkMessage().then(mesh => {
   messageMesh = mesh;
   scene.add(messageMesh);
 });
+
+// --- GEOMETRY SETUP ---
 
 const width = 4;
 const height = 2;
@@ -452,14 +560,11 @@ function updateClothGeometry() {
   positions.needsUpdate = true;
   cloth.geometry.computeVertexNormals();
 }
-
-// Reemplazar TODO el contenido de la función animate() por:
-
 function animate() {
   requestAnimationFrame(animate);
 
   if (currentHydraTexture !== null) {
-      vit.needsUpdate = true;
+    vit.needsUpdate = true;
   }
 
   orbitAngle += orbitSpeed;
@@ -468,23 +573,23 @@ function animate() {
   orbitingSphere.position.y = orbitHeight;
 
   if (isActive) {
-      if (!scene.children.includes(cloth)) scene.add(cloth);
-      if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
-      
-      timeUniform.value += 0.01;
-      updateClothGeometry();
-      cloth.rotation.z += 0.01;
-      
-      if (messageMesh) {
-          messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.05, 0);
-      }
+    if (!scene.children.includes(cloth)) scene.add(cloth);
+    if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
+
+    timeUniform.value += 0.01;
+    updateClothGeometry();
+    cloth.rotation.z += 0.01;
+
+    if (messageMesh) {
+      messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.05, 0);
+    }
   } else {
-      if (scene.children.includes(cloth)) scene.remove(cloth);
-      if (scene.children.includes(wireframeCube)) scene.remove(wireframeCube);
-      
-      if (messageMesh) {
-          messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.05, 1);
-      }
+    if (scene.children.includes(cloth)) scene.remove(cloth);
+    if (scene.children.includes(wireframeCube)) scene.remove(wireframeCube);
+
+    if (messageMesh) {
+      messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.05, 1);
+    }
   }
 
   controls.update();
@@ -496,55 +601,42 @@ function setupInteractivity() {
 
   rectangles.forEach((rect) => {
     rect.addEventListener("mouseenter", () => {
-      // Mostrar NFC si existe
       if (messageMesh) {
         messageMesh.showNFC(true);
       }
 
-      // Oculta círculos y cambia color de fondo de todos
+      // Apagar iluminación de todos
       rectangles.forEach((r) => {
         r.classList.add("hide-circles");
         r.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
       });
 
-      // Muestra círculos solo del hovered
+      // Encender iluminación solo del rect actual
       rect.classList.remove("hide-circles");
       rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
 
-      // Cambiar textura Hydra
+      // Obtener índice de textura
       const textureIndex = parseInt(rect.dataset.textureIndex);
       if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-        hydraTextures[textureIndex]();
-        currentHydraTexture = textureIndex;
-        isActive = true;
-        isWebSocketActivation = false;
-        lastActiveTime = Date.now();
-
-        // Cancelar timeout previo si existe
-        if (activationTimeout) {
-          clearTimeout(activationTimeout);
-        }
-
-        // Programar desactivación después de 30 segundos
-        activationTimeout = setTimeout(() => {
-          isActive = false;
-          lastActiveTime = Date.now() - 1000;
-          resetCameraPosition(); 
-        }, 30000);
+        activateTexture(textureIndex, false);
       }
     });
 
     rect.addEventListener("mouseleave", () => {
       setTimeout(() => {
         if (Date.now() - lastActiveTime > 100 && !isWebSocketActivation) {
-          // No desactivar inmediatamente, el timeout se encargará
+          // No desactivar textura aquí, se maneja con timeout en activateTexture
+          // Pero si quieres hacer algo cuando el mouse sale, puedes ponerlo aquí
+          // Por ejemplo, restablecer iluminación:
+          illuminateAllRects(true);
+          if (messageMesh) {
+            messageMesh.showNFC(true);
+          }
         }
       }, 100);
     });
   });
 
-  // Restaurar todos los círculos al salir del panel completamente
-  const leftPanel = document.getElementById("left-panel");
   leftPanel.addEventListener("mouseleave", () => {
     rectangles.forEach((rect) => {
       rect.classList.remove("hide-circles");
@@ -553,56 +645,54 @@ function setupInteractivity() {
   });
 }
 
-// Reemplazar TODO el bloque del WebSocket actual por:
 
-const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const socket = new WebSocket(`${protocol}://${window.location.host}`);
+const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+let socket = new WebSocket(`${protocol}://${window.location.host}`);
 
-socket.addEventListener('message', (event) => {
-    try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'activate') {
-            const textureIndex = parseInt(data.index);
-            if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-                hydraTextures[textureIndex]();
-                currentHydraTexture = textureIndex;
-                isActive = true;
-                isWebSocketActivation = true;
-                lastActiveTime = Date.now();
+socket.addEventListener("message", (event) => {
+  try {
+    const data = JSON.parse(event.data);
 
-                if (activationTimeout) clearTimeout(activationTimeout);
-                activationTimeout = setTimeout(() => {
-                    isActive = false;
-                    isWebSocketActivation = false;
-                    resetCameraPosition();
-                }, 30000);
-            }
-        }
-    } catch (e) {
-        console.error('Error processing WebSocket message:', e);
+    if (data.type === "activate") {
+      activateTexture(parseInt(data.index), true);
+
+      const textureIndex = parseInt(data.index);
+      if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+        hydraTextures[textureIndex]();
+        currentHydraTexture = textureIndex;
+        isActive = true;
+        isWebSocketActivation = true;
+        lastActiveTime = Date.now();
+
+        if (activationTimeout) clearTimeout(activationTimeout);
+        activationTimeout = setTimeout(() => {
+          isActive = false;
+          isWebSocketActivation = false;
+          resetCameraPosition();
+        }, 30000);
+      }
     }
+  } catch (e) {
+    console.error("Error processing WebSocket message:", e);
+  }
 });
 
+socket.addEventListener("close", () => {
+  setTimeout(() => {
+    socket = new WebSocket(`${protocol}://${window.location.host}`);
+  }, 5000);
+});
+
+
 function init() {
-  handleInitialNFC(); // Procesar parámetro NFC al inicio
+  handleInitialNFC();
   adjustRectangles();
   setupInteractivity();
   animate();
-  
-  // Manejar reconexión de WebSocket
-  socket.addEventListener('close', () => {
-      setTimeout(() => {
-          new WebSocket(`${protocol}://${window.location.host}`);
-      }, 5000);
-  });
+  resetInactivityTimeout();
+
 }
 
-window.addEventListener("resize", () => {
-  adjustRectangles();
-  camera.aspect = 1920 / 1080; // esto estaba en 1280x720 revisar si se conserva 
-  camera.updateProjectionMatrix();
-  renderer.setSize(1920, 1080);
-});
-
 init();
+
+
