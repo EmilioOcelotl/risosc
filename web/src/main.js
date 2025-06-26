@@ -384,7 +384,7 @@ async function createCyberpunkMessage() {
     opacity: 1.0,
   });
 
-  const geometry = new THREE.PlaneGeometry(6/3*2, 3/3*2);
+  const geometry = new THREE.PlaneGeometry(4, 2);
   const messageMesh = new THREE.Mesh(geometry, material);
   messageMesh.position.z = 0.5;
   messageMesh.position.y = 0;

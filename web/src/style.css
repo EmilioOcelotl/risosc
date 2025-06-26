@@ -1,186 +1,141 @@
 @font-face {
-    font-family: 'Orbitron';
-    src: url('fonts/Orbitron-Medium.ttf') format('truetype');
-    font-weight: 400;
-    font-style: normal;
-    font-display: block;
-  }
-  
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  html, body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    width: 100%;
-    height: 100%;
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 500;
-  }
-  
-  body {
-    display: flex;
-    flex-direction: row-reverse;
-    width: 1920px;
-    height: 1080px;
-    position: absolute;
-    top: 0;
-    left: 0;
-    background-color: black;
-  }
-  
-  #left-panel {
-    width: 740px;
-    height: 1080px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 50px;
-    padding: 0px;
-    box-sizing: border-box;
-    margin-right: 50px;
-  }
-  
-  .rectangle {
-    background-color: rgba(255, 255, 255, 0.9);
-    box-sizing: border-box;
-    max-width: 130px;
-    max-height: 76px;
-    aspect-ratio: 3/2;
-    cursor: pointer;
-    position: relative;
-    transition: background-color 0.3s ease;
-  }
-  
-  .rectangle::before,
-  .rectangle::after {
-    content: "";
-    position: absolute;
-    top: 5px;
-    left: 5px;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    animation: pulse 2s infinite ease-out;
-    transition: opacity 0.3s ease;
-  }
-  
-  .rectangle::before {
-    border: 2px solid rgba(255, 27, 194, 0.9);
-    box-shadow: 0 0 2px #3333;
-    z-index: 1;
-  }
-  
-  .rectangle::after {
-    border: 2px solid rgba(255, 27, 194, 0.5);
-    animation-delay: 0.5s;
-    z-index: 0;
-  }
-  
-  @keyframes pulse {
-    0% {
-      transform: scale(1);
-      opacity: 1;
-    }
-    70% {
-      transform: scale(2.5);
-      opacity: 0;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 0;
-    }
-  }
-  
-  /* ✅ Hover global en el panel */
-  #left-panel:hover .rectangle {
-    background-color: rgba(0, 0, 0, 0.9);
-  }
-  
-  /* ✅ El hovered se mantiene blanco */
-  #left-panel:hover .rectangle:hover {
-    background-color: rgba(255, 255, 255, 0.9);
-  }
-  
-  /* Opción adicional por JS si necesitas control dinámico */
-  .rectangle.hide-circles::before,
-  .rectangle.hide-circles::after {
-    opacity: 0 !important;
-  }
-  
-  .rectangle.black-bg {
-    background-color: rgba(0, 0, 0, 0.9) !important;
-  }
-  
-  #right-panel {
-    width: 1080px;
-    height: 1080px;
-    margin: 0;
-    position: relative;
-    background-color: rgba(0, 0, 0, 0.5);
-  }
-  
-  #hydra-canvas {
-    display: none;
-  }
+  font-family: 'Orbitron';
+  src: url('fonts/Orbitron-Medium.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
 
-/* Animación base (compartida por todos los círculos) */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 500;
+  background-color: black;
+}
+
+body {
+  display: flex;
+  flex-direction: row-reverse;
+  width: 1920px;
+  height: 1080px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#left-panel {
+  width: 740px;
+  height: 1080px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 50px;
+  margin-right: 50px;
+  z-index: 0; /* Contexto base */
+
+}
+
+.rectangle {
+  background-color: transparent !important;
+  position: relative;
+  max-width: 130px;
+  max-height: 76px;
+  aspect-ratio: 3 / 2;
+  cursor: pointer;
+  overflow: visible;
+  border: none;
+}
+
+/* Luz difusa centrada con tamaño similar al rectángulo */
+.rectangle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 160px;    /* ligeramente mayor que el rect para que salga luz */
+  height: 96px;    /* acorde con aspect-ratio 3:2 */
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.8) 40%,
+    rgba(255, 255, 255, 0.15) 70%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(10px);
+  border-radius: 20px; /* bordes suaves acorde al rect */
+}
+
+.rectangle.show-circles::before,
+.rectangle.active-circle::before {
+  opacity: 1;
+}
+
+/* Círculo pulsante en esquina superior izquierda */
+.rectangle::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 2px #fff;
+  opacity: 0;
+  animation: none;
+  transition: opacity 0.3s ease;
+  z-index: 1;
+}
+
 @keyframes pulseSync {
-  0%, 100% { 
+  0%, 100% {
     transform: scale(1);
     opacity: 1;
   }
-  50% { 
+  50% {
     transform: scale(2.5);
     opacity: 0;
   }
 }
 
-/* Estructura común para todos los círculos */
-.rectangle::before,
-.rectangle::after {
-  /* Estado inicial */
-  opacity: 0;
-  transform: scale(1);
-  animation: none; 
-  /* Propiedades compartidas */
-  content: "";
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 27, 194, 0.9);
-  box-shadow: 0 0 2px #3333;
-}
-
-/* Círculo exterior (con retraso) */
-.rectangle::after {
-  border-color: rgba(255, 27, 194, 0.5);
-}
-
-/* Cuando están visibles */
-.rectangle.show-circles::before,
-.rectangle.active-circle::before {
+.rectangle.show-circles::after,
+.rectangle.active-circle::after {
   opacity: 1;
   animation: pulseSync 2s infinite ease-out;
 }
 
-.rectangle.show-circles::after,
-.rectangle.active-circle::after {
-  opacity: 1;
-  animation: pulseSync 2s infinite ease-out 0.5s; /* Delay de 0.5s */
-}
-
-/* Ocultar círculos inactivos */
 .rectangle:not(.show-circles):not(.active-circle)::before,
 .rectangle:not(.show-circles):not(.active-circle)::after {
   opacity: 0 !important;
   animation: none !important;
+}
+
+.rectangle.hide-circles::before,
+.rectangle.hide-circles::after {
+  opacity: 0 !important;
+}
+
+
+/* Estilos secundarios */
+#right-panel {
+  width: 1080px;
+  height: 1080px;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+#hydra-canvas {
+  display:none;
 }
