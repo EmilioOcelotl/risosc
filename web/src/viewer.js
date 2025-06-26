@@ -1,7 +1,6 @@
 let isActive = false;
 let lastActiveTime = 0;
 
-
 function getNFCParam() {
     const params = new URLSearchParams(window.location.search);
     return parseInt(params.get('nfc'));
@@ -17,15 +16,11 @@ function notifyServer(index) {
 
 const hydraCanvas = document.getElementById('hydra-canvas');
 
-let composer;
-let bloomPass;
-let renderScene;
-let bloomParams = {
-    exposure: 1,
-    bloomStrength: 1.5,
-    bloomThreshold: 0,
-    bloomRadius: 0.5
-};
+const hydra = new Hydra({
+    canvas: hydraCanvas,
+    autoLoop: true,
+    detectAudio: false
+});
 
 const hydraTextures = [
     () => {
@@ -79,81 +74,17 @@ const container = document.getElementById( 'container' );
 
 container.appendChild(renderer.domElement);
 
-const hydra = new Hydra({
-    canvas: hydraCanvas,
-    autoLoop: true,
-    detectAudio: false
-});
-
 const nfcIndex = getNFCParam();
 if (!isNaN(nfcIndex) && hydraTextures[nfcIndex]) {
-    hydraTextures[nfcIndex]();
-    currentHydraTexture = nfcIndex;
-    notifyServer(nfcIndex); // 🚀 Notifica al servidor
+    hydraTextures[nfcIndex](); // Activa Hydra
+    notifyServer(nfcIndex);    // Notifica al servidor
     isActive = true;
     lastActiveTime = Date.now();
 } else {
     hydraTextures[0](); // Fallback
 }
+
 const vit = new THREE.CanvasTexture(hydraCanvas);
-
-
-/*
-osc(10, 0.04, 0.6)
-    .color(0.9 * 2, 0.8 * 4, 1.5)
-    .modulate(noise(0.1, 0.2).rotate(0.1, 0.2).scale(1.01), 0.2)
-    .modulate(src(o0).scale(1.1).rotate(0.1), 0.2)
-    .invert()
-    .saturate(1.1)
-    .out();
-*/
-
-/*
-async function createCyberpunkMessage() {
-    await document.fonts.ready;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.font = 'bold 80px Orbitron';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    for (let i = 0; i < 5; i++) {
-        ctx.shadowBlur = 20 - i * 3;
-        ctx.shadowColor = i % 2 === 0 ? '#0ff' : '#f0f';
-        ctx.fillStyle = i === 4 ? '#fff' : 'rgba(0, 255, 255, 0.3)';
-        ctx.fillText('HOVER TO ACTIVATE', canvas.width / 2, canvas.height / 2);
-    }
-
-    const texture = new THREE.CanvasTexture(canvas);
-    const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 1.0
-    });
-
-    const geometry = new THREE.PlaneGeometry(3, 1.5);
-    const messageMesh = new THREE.Mesh(geometry, material);
-    messageMesh.position.z = 0.5;
-    messageMesh.position.y = 0;
-
-    return messageMesh;
-}
-
-
-let messageMesh;
-createCyberpunkMessage().then(mesh => {
-    messageMesh = mesh;
-    scene.add(messageMesh);
-});
-
-*/ 
 
 const width = 4;
 const height = 2;
@@ -279,21 +210,6 @@ function animate() {
 
         timeUniform.value += 0.01;
         updateClothGeometry();
-
-        /*
-        if (messageMesh) {
-            messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.1, 0);
-        }
-    } else {
-        if (scene.children.includes(cloth)) {
-            scene.remove(cloth);
-        }
-        
-
-        if (messageMesh) {
-            messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.1, 1);
-        }
-            */
     }
 
     controls.update();
@@ -325,7 +241,7 @@ function setupInteractivity() {
 
 
 function init() {
-    setupInteractivity();
+    // setupInteractivity();
     animate();
 }
 
@@ -336,8 +252,11 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+animate();
+
 // const socket = new WebSocket('ws://localhost:3000');
 
+/*
 const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
 const socket = new WebSocket(`${protocol}://${window.location.host}`);
 
@@ -355,3 +274,4 @@ socket.addEventListener('message', function (event) {
 });
 
 init();
+*/
