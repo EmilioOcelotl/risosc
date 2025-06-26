@@ -199,9 +199,7 @@ function animate() {
     requestAnimationFrame(animate);
 
     // Actualizamos la textura solo si hay una activa
-    if (currentHydraTexture !== null) {
         vit.needsUpdate = true;
-    }
 
     if (isActive) {
         if (!scene.children.includes(cloth)) {
