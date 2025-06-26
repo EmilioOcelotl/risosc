@@ -65,37 +65,58 @@ let demoInterval = null;
 
 function startDemoMode() {
   if (demoInterval) return;
+  
+  // 1. Define los nuevos tiempos aquí (en milisegundos)
+  const TEXT_PHASE_DURATION = 10000; // 10 segundos para texto/instrucciones
+  const MESH_PHASE_DURATION = 5000;  // 5 segundos para cada mesh
+  const INITIAL_DELAY = 3000;        // 3 segundos delay inicial (opcional)
+  
   let demoIndex = 0;
-  let showInstructions = false; // para alternar fases
+  let showInstructions = true; // Comienza mostrando instrucciones
 
   // Al iniciar, mostrar instrucciones y todos iluminados
   if (messageMesh) messageMesh.material.opacity = 1;
   illuminateAllRects(true);
 
-  demoInterval = setInterval(() => {
-    if (showInstructions) {
-      // Mostrar instrucciones, iluminar todos los rects
-      if (messageMesh) messageMesh.material.opacity = 1;
-      illuminateAllRects(true);
-      isActive = false;
-    } else {
-      // Mostrar mesh y solo iluminar el rect correspondiente
-      hydraTextures[demoIndex]();
-      currentHydraTexture = demoIndex;
-      isActive = true;
-      lastActiveTime = Date.now();
+  // 2. Delay inicial opcional antes de empezar el ciclo
+  setTimeout(() => {
+    demoInterval = setInterval(() => {
+      if (showInstructions) {
+        // Fase de instrucciones (texto)
+        if (messageMesh) messageMesh.material.opacity = 1;
+        illuminateAllRects(true);
+        isActive = false;
+      } else {
+        // Fase de mesh
+        hydraTextures[demoIndex]();
+        currentHydraTexture = demoIndex;
+        isActive = true;
+        lastActiveTime = Date.now();
 
-      if (messageMesh) messageMesh.material.opacity = 0;
-      illuminateRect(demoIndex);
+        if (messageMesh) messageMesh.material.opacity = 0;
+        illuminateRect(demoIndex);
 
-      demoIndex = (demoIndex + 1) % hydraTextures.length;
+        demoIndex = (demoIndex + 1) % hydraTextures.length;
+      }
+
+      // Alternar fase usando los tiempos definidos
+      showInstructions = !showInstructions;
+    }, showInstructions ? TEXT_PHASE_DURATION : MESH_PHASE_DURATION);
+    
+    // 3. Iniciar inmediatamente el primer cambio después del delay inicial
+    if (!showInstructions) {
+      const immediateChange = () => {
+        hydraTextures[demoIndex]();
+        currentHydraTexture = demoIndex;
+        isActive = true;
+        lastActiveTime = Date.now();
+        if (messageMesh) messageMesh.material.opacity = 0;
+        illuminateRect(demoIndex);
+      };
+      immediateChange();
     }
-
-    // Alternar fase
-    showInstructions = !showInstructions;
-  }, 8000); // cada fase dura 8 segundos
+  }, INITIAL_DELAY);
 }
-
 function illuminateAllRects(enable) {
   const rectangles = document.querySelectorAll(".rectangle");
   rectangles.forEach((rect) => {
@@ -261,7 +282,7 @@ async function createCyberpunkMessage() {
 
   let nfcPulseSize = 0;
   let nfcPulseOpacity = 0;
-  let nfcVisible = false;
+  let nfcVisible = true;
 
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
@@ -605,19 +626,12 @@ function setupInteractivity() {
         messageMesh.showNFC(true);
       }
 
-      // Apagar iluminación de todos
-      rectangles.forEach((r) => {
-        r.classList.add("hide-circles");
-        r.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-      });
-
-      // Encender iluminación solo del rect actual
-      rect.classList.remove("hide-circles");
-      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-
       // Obtener índice de textura
       const textureIndex = parseInt(rect.dataset.textureIndex);
+      
       if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
+        // Iluminar solo el rectángulo correspondiente (igual que en activateTexture)
+        illuminateRect(textureIndex);
         activateTexture(textureIndex, false);
       }
     });
@@ -625,10 +639,10 @@ function setupInteractivity() {
     rect.addEventListener("mouseleave", () => {
       setTimeout(() => {
         if (Date.now() - lastActiveTime > 100 && !isWebSocketActivation) {
-          // No desactivar textura aquí, se maneja con timeout en activateTexture
-          // Pero si quieres hacer algo cuando el mouse sale, puedes ponerlo aquí
-          // Por ejemplo, restablecer iluminación:
-          illuminateAllRects(true);
+          // Si no hay activación persistente, volver al estado de demo mode
+          if (!isActive) {
+            illuminateAllRects(true); // Iluminar todos como en demo mode
+          }
           if (messageMesh) {
             messageMesh.showNFC(true);
           }
@@ -637,14 +651,14 @@ function setupInteractivity() {
     });
   });
 
+  // Cuando el mouse sale del panel izquierdo completamente
   leftPanel.addEventListener("mouseleave", () => {
-    rectangles.forEach((rect) => {
-      rect.classList.remove("hide-circles");
-      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-    });
+    // Solo restablecer si no hay una textura activa
+    if (!isActive) {
+      illuminateAllRects(true); // Iluminar todos como en demo mode
+    }
   });
 }
-
 
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 let socket = new WebSocket(`${protocol}://${window.location.host}`);
@@ -685,6 +699,10 @@ socket.addEventListener("close", () => {
 
 
 function init() {
+  if (messageMesh) {
+    messageMesh.showNFC(true);
+  }
+
   handleInitialNFC();
   adjustRectangles();
   setupInteractivity();

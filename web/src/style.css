@@ -71,13 +71,13 @@
   }
   
   .rectangle::before {
-    border: 2px solid rgba(0, 0, 255, 0.9);
+    border: 2px solid rgba(255, 27, 194, 0.9);
     box-shadow: 0 0 2px #3333;
     z-index: 1;
   }
   
   .rectangle::after {
-    border: 2px solid rgba(0, 0, 255, 0.5);
+    border: 2px solid rgba(255, 27, 194, 0.5);
     animation-delay: 0.5s;
     z-index: 0;
   }
@@ -106,13 +106,6 @@
   #left-panel:hover .rectangle:hover {
     background-color: rgba(255, 255, 255, 0.9);
   }
-  
- /* Solo oculta los círculos si NO tiene la clase .manual-override */
-#left-panel:hover .rectangle:not(.manual-override)::before,
-#left-panel:hover .rectangle:not(.manual-override)::after {
-  opacity: 0 !important;
-  animation: none !important;
-}
   
   /* Opción adicional por JS si necesitas control dinámico */
   .rectangle.hide-circles::before,
