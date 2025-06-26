@@ -129,23 +129,58 @@
     display: none;
   }
 
-/* 🔁 Cuando quieres mostrar TODOS los círculos (mensaje visible en modo demo) */
+/* Animación base (compartida por todos los círculos) */
+@keyframes pulseSync {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Estructura común para todos los círculos */
+.rectangle::before,
+.rectangle::after {
+  /* Estado inicial */
+  opacity: 0;
+  transform: scale(1);
+  animation: none; 
+  /* Propiedades compartidas */
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 27, 194, 0.9);
+  box-shadow: 0 0 2px #3333;
+}
+
+/* Círculo exterior (con retraso) */
+.rectangle::after {
+  border-color: rgba(255, 27, 194, 0.5);
+}
+
+/* Cuando están visibles */
 .rectangle.show-circles::before,
-.rectangle.show-circles::after {
-  opacity: 1 !important;
-  animation: pulse 2s infinite ease-out;
+.rectangle.active-circle::before {
+  opacity: 1;
+  animation: pulseSync 2s infinite ease-out;
 }
 
-/* 🔁 Cuando quieres mostrar el círculo de SOLO UN rectángulo */
-.rectangle.active-circle::before,
+.rectangle.show-circles::after,
 .rectangle.active-circle::after {
-  opacity: 1 !important;
-  animation: pulse 2s infinite ease-out;
+  opacity: 1;
+  animation: pulseSync 2s infinite ease-out 0.5s; /* Delay de 0.5s */
 }
 
-/* 🔇 En todos los demás casos (opcional si ya tienes hide-circles como fallback) */
-.rectangle:not(.active-circle):not(.show-circles)::before,
-.rectangle:not(.active-circle):not(.show-circles)::after {
+/* Ocultar círculos inactivos */
+.rectangle:not(.show-circles):not(.active-circle)::before,
+.rectangle:not(.show-circles):not(.active-circle)::after {
   opacity: 0 !important;
   animation: none !important;
 }

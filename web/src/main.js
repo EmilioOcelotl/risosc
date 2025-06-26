@@ -2,16 +2,6 @@ const leftPanel = document.getElementById("left-panel");
 const rightPanel = document.getElementById("right-panel");
 const hydraCanvas = document.getElementById("hydra-canvas");
 
-let composer;
-let bloomPass;
-let renderScene;
-let bloomParams = {
-  exposure: 1,
-  bloomStrength: 0.1,
-  bloomThreshold: 0,
-  bloomRadius: 0.1,
-};
-
 function activateTexture(index, fromWebSocket = false) {
   // Detener el modo demo si está activo
   if (demoInterval) {
@@ -24,7 +14,7 @@ function activateTexture(index, fromWebSocket = false) {
     currentHydraTexture = index;
     isActive = true;
     isWebSocketActivation = fromWebSocket;
-    lastActiveTime = Date.now();
+    lastActiveTime = Date.now(); // Actualizar el tiempo de última actividad
 
     // Iluminar solo el rectángulo correspondiente
     illuminateRect(index);
@@ -34,56 +24,58 @@ function activateTexture(index, fromWebSocket = false) {
       messageMesh.material.opacity = 0;
     }
 
-    // Reiniciar el timeout de activación para volver al modo demo tras inactividad
-    if (activationTimeout) clearTimeout(activationTimeout);
-    activationTimeout = setTimeout(() => {
-      isActive = false;
-      isWebSocketActivation = false;
-      resetCameraPosition();
-      startDemoMode();
-    }, INACTIVITY_DELAY);
-
-    // Reiniciar también el timeout general de inactividad
+    // Reiniciar el timeout de inactividad
     resetInactivityTimeout();
   }
 }
 
-
 let inactivityTimeout = null;
+let demoInterval = null;
 const INACTIVITY_DELAY = 30000; // 30 segundos
 
 function resetInactivityTimeout() {
+  // Limpiar cualquier timeout existente
   if (inactivityTimeout) clearTimeout(inactivityTimeout);
+  
+  // Configurar nuevo timeout
   inactivityTimeout = setTimeout(() => {
-    isActive = false;
-    resetCameraPosition();
-    startDemoMode();
+    // Solo activar demo mode si no hay actividad reciente
+    if (Date.now() - lastActiveTime >= INACTIVITY_DELAY) {
+      isActive = false;
+      isWebSocketActivation = false;
+      resetCameraPosition();
+      startDemoMode();
+    }
   }, INACTIVITY_DELAY);
 }
 
-let demoInterval = null;
-
 function startDemoMode() {
-  if (demoInterval) return;
-  
-  // 1. Define los nuevos tiempos aquí (en milisegundos)
-  const TEXT_PHASE_DURATION = 10000; // 10 segundos para texto/instrucciones
-  const MESH_PHASE_DURATION = 5000;  // 5 segundos para cada mesh
-  const INITIAL_DELAY = 3000;        // 3 segundos delay inicial (opcional)
+  if (demoInterval || Date.now() - lastActiveTime < INACTIVITY_DELAY) {
+    return;
+  }
+
+  const TEXT_PHASE_DURATION = 10000;
+  const MESH_PHASE_DURATION = 5000;
+  const INITIAL_DELAY = 3000;
   
   let demoIndex = 0;
-  let showInstructions = true; // Comienza mostrando instrucciones
+  let showInstructions = true;
 
   // Al iniciar, mostrar instrucciones y todos iluminados
-  if (messageMesh) messageMesh.material.opacity = 1;
+  if (messageMesh) {
+    messageMesh.material.opacity = 1;
+    messageMesh.showNFC(true);
+  }
   illuminateAllRects(true);
 
-  // 2. Delay inicial opcional antes de empezar el ciclo
   setTimeout(() => {
     demoInterval = setInterval(() => {
       if (showInstructions) {
         // Fase de instrucciones (texto)
-        if (messageMesh) messageMesh.material.opacity = 1;
+        if (messageMesh) {
+          messageMesh.material.opacity = 1;
+          messageMesh.showNFC(true);
+        }
         illuminateAllRects(true);
         isActive = false;
       } else {
@@ -93,55 +85,65 @@ function startDemoMode() {
         isActive = true;
         lastActiveTime = Date.now();
 
-        if (messageMesh) messageMesh.material.opacity = 0;
+        if (messageMesh) {
+          messageMesh.material.opacity = 0;
+          messageMesh.showNFC(false);
+        }
         illuminateRect(demoIndex);
 
         demoIndex = (demoIndex + 1) % hydraTextures.length;
       }
 
-      // Alternar fase usando los tiempos definidos
       showInstructions = !showInstructions;
     }, showInstructions ? TEXT_PHASE_DURATION : MESH_PHASE_DURATION);
     
-    // 3. Iniciar inmediatamente el primer cambio después del delay inicial
     if (!showInstructions) {
       const immediateChange = () => {
         hydraTextures[demoIndex]();
         currentHydraTexture = demoIndex;
         isActive = true;
         lastActiveTime = Date.now();
-        if (messageMesh) messageMesh.material.opacity = 0;
+        if (messageMesh) {
+          messageMesh.material.opacity = 0;
+          messageMesh.showNFC(false);
+        }
         illuminateRect(demoIndex);
       };
       immediateChange();
     }
   }, INITIAL_DELAY);
 }
+
 function illuminateAllRects(enable) {
   const rectangles = document.querySelectorAll(".rectangle");
   rectangles.forEach((rect) => {
-    rect.classList.remove("hide-circles", "active-circle");
+    rect.classList.remove("hide-circles", "active-circle", "show-circles");
     if (enable) {
       rect.classList.add("show-circles");
       rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+      rect.style.animation = 'none';
+      void rect.offsetWidth; // Trigger reflow
+      rect.style.animation = '';
     } else {
-      rect.classList.remove("show-circles");
       rect.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
     }
   });
 }
 
-
 function illuminateRect(index) {
   const rectangles = document.querySelectorAll(".rectangle");
   rectangles.forEach((rect, idx) => {
+    rect.classList.remove("show-circles", "active-circle", "manual-override");
     rect.classList.add("hide-circles");
-    rect.classList.remove("manual-override", "show-circles", "active-circle");
     rect.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
+    
     if (idx === index) {
       rect.classList.remove("hide-circles");
       rect.classList.add("active-circle");
       rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
+      rect.style.animation = 'none';
+      void rect.offsetWidth; // Trigger reflow
+      rect.style.animation = '';
     }
   });
 }
@@ -204,6 +206,7 @@ function handleInitialNFC() {
   const params = new URLSearchParams(window.location.search);
   const nfcIndex = parseInt(params.get('nfc'));
   if (!isNaN(nfcIndex) && nfcIndex >= 0 && nfcIndex < hydraTextures.length) {
+    lastActiveTime = Date.now(); // Añadir esta línea
     hydraTextures[nfcIndex]();
     currentHydraTexture = nfcIndex;
     isActive = true;
@@ -266,8 +269,8 @@ const vit = new THREE.CanvasTexture(hydraCanvas);
 async function createCyberpunkMessage() {
   // Texto animado con NFC
   const textAlternatives = [
-    { static: "ACERCA EL", dynamic: "TELÉFONO" },
-    { static: "MUEVE EL", dynamic: "MOUSE" },
+    { static: "PASA EL CURSOR SOBRE", dynamic: "LOS CUADROS" },
+    { static: "O ACERCA TU", dynamic: "TELÉFONO" }
   ];
   let phraseIndex = 0;
   let fading = false;
@@ -312,32 +315,37 @@ async function createCyberpunkMessage() {
 
   function drawMainText() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Título fijo
-    ctx.font = "bold 100px Orbitron";
+  
+    // Ajustes de posición (valores en píxeles)
+    const titleY = centerY - 280;    // Posición del título "RisOSC"
+    const subtitleY = centerY - 200; // Posición del subtítulo
+    const instructionY = centerY - 80; // Posición de las instrucciones
+    const subtextY = centerY;        // Posición del texto adicional
+  
+    // Título principal ("RisOSC")
+    ctx.font = "bold 90px Orbitron"; // Reducido ligeramente el tamaño
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText("RisOSC", centerX, centerY - 300);
-
-    // Frase actual
+    ctx.fillText("RisOSC", centerX, titleY);
+  
+    // Subtítulo
+    ctx.font = "italic 32px Orbitron"; // Tamaño reducido
+    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
+    ctx.fillText("Escrituras sobre lo escaso multiplicado y lo efímero único", centerX, subtitleY);
+  
+    // Instrucciones interactivas (texto alternante)
     const current = textAlternatives[phraseIndex];
     const fullLine = `${current.static} ${current.dynamic}`;
-    const lineY = centerY - 50;
-
-    // Fade opacity
-    const opacity = fading ? 1 - fadeProgress : 1;
-    ctx.globalAlpha = opacity;
-
-    ctx.font = "bold 60px Orbitron";
+    
+    ctx.font = "bold 48px Orbitron"; // Tamaño ajustado
     ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText(fullLine, centerX, lineY);
-    ctx.globalAlpha = 1;
-
-    // Subtexto
-    ctx.font = "bold 42px Orbitron";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText("sobre icono NFC para activar la experiencia", centerX, centerY + 30);
+    ctx.fillText(fullLine, centerX, instructionY);
+  
+    // Texto adicional
+    ctx.font = "bold 28px Orbitron";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
+    ctx.fillText("para activar la experiencia", centerX, subtextY);
   }
 
   function animateNFCIcon() {
@@ -376,7 +384,7 @@ async function createCyberpunkMessage() {
     opacity: 1.0,
   });
 
-  const geometry = new THREE.PlaneGeometry(3, 1.5);
+  const geometry = new THREE.PlaneGeometry(6/3*2, 3/3*2);
   const messageMesh = new THREE.Mesh(geometry, material);
   messageMesh.position.z = 0.5;
   messageMesh.position.y = 0;
@@ -622,6 +630,7 @@ function setupInteractivity() {
 
   rectangles.forEach((rect) => {
     rect.addEventListener("mouseenter", () => {
+      lastActiveTime = Date.now(); // Actualizar tiempo de interacción
       if (messageMesh) {
         messageMesh.showNFC(true);
       }
@@ -668,6 +677,8 @@ socket.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
 
     if (data.type === "activate") {
+      lastActiveTime = Date.now(); // Añadir esta línea
+
       activateTexture(parseInt(data.index), true);
 
       const textureIndex = parseInt(data.index);
@@ -708,9 +719,8 @@ function init() {
   setupInteractivity();
   animate();
   resetInactivityTimeout();
+  illuminateAllRects(true); 
 
 }
 
 init();
-
-
