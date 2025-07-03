@@ -1,4 +1,4 @@
-![Texto alternativo](assets/img/risoscbanner.jpg)
+![Texto alternativo](assets/img/risosc4.jpg)
 
 # RisOSC
 
@@ -8,6 +8,7 @@ RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 - server. Gestión de envios y despliegues. 
 - firmware. Un control para evitar el uso de un dispositivo móvil en el sitio.
 - scripts. Para ejecutar en una compu con linux de manera automática 
+- export. Para exportar versiones de los renders 
 
 ## Requerimientos
 
