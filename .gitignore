@@ -3,6 +3,8 @@
 **/.parcel-cache/
 **/.cache/
 
+firmware/.env.h
+
 web/dist/
 build/
 *.log
