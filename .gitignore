@@ -3,7 +3,7 @@
 **/.parcel-cache/
 **/.cache/
 
-firmware/.env.h
+firmware/firmware/src/env.h
 
 web/dist/
 build/

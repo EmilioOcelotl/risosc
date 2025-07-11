@@ -25,10 +25,10 @@ Por el LED RGB del Arduino Nano es posible que este código no funcione en otras
 
 ## Puesta en marcha
 
-El archivo [firmware.ino](firmware.ino) requiere de un archivo .env.h con las siguientes características: 
+El archivo [firmware.ino](firmware.ino) requiere de un archivo env.h con las siguientes características: 
 
 ```
-// .env.example.h
+// env.example.h
 #define WIFI_SSID     "ejemplo_ssid"
 #define WIFI_PASSWORD "ejemplo_password"
 #define API_URL       "https://ejemplo.com/api/nfc"
