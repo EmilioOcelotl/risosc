@@ -4,7 +4,7 @@ Para correr el servidor
 
 ```
 npm install
-pm2 start server.js --name risosc
+pm2 start app.js --name risosc
 pm2 save
 ```
 
