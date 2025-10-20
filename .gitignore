@@ -5,7 +5,7 @@
 
 firmware/firmware/src/env.h
 
-web/dist/
+dist/
 build/
 *.log
 .env

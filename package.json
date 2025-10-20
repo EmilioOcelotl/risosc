@@ -1,0 +1,23 @@
+{
+    "name": "osc-project",
+    "version": "1.0.0",
+    "description": "Proyecto RisOSC: front-end con Three + Hydra y backend con Express + WebSocket",
+    "scripts": {
+      "dev": "parcel ./web/src/index.html",
+      "build": "parcel build ./web/src/index.html --public-url ./",
+      "start": "node server/app.js"
+    },
+    "author": "Emilio Ocelotl",
+    "license": "ISC",
+    "dependencies": {
+      "express": "^5.1.0",
+      "ws": "^8.18.2",
+      "three": "^0.180.0",
+      "hydra-synth": "^1.4.0"
+    },
+    "devDependencies": {
+      "parcel": "^2.15.2",
+      "events": "^3.3.0"
+    }
+  }
+  

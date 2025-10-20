@@ -1,3 +1,18 @@
+
+
+// main.js
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// Para postprocessing y shaders
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
+import { RGBShiftShader } from 'three/examples/jsm/shaders/RGBShiftShader.js';
+import { DotScreenShader } from 'three/examples/jsm/shaders/DotScreenShader.js';
+import Hydra from 'hydra-synth';
+
+
 const rightPanel = document.getElementById("right-panel");
 const hydraCanvas = document.getElementById("hydra-canvas");
 
@@ -356,11 +371,10 @@ const material = new THREE.MeshPhongMaterial({
   specular: 0x222222,
   shininess: 30,
   emissive: 0x000000,
-  emissiveIntensity: 0,
+  emissiveIntensity: 0.5,
   map: vit,
   reflectivity: 0.9,
-  combine: THREE.MixOperation,
-  shading: THREE.SmoothShading,
+  // combine: THREE.MixOperation
 });
 
 const cloth = new THREE.Mesh(geometry, material);
@@ -433,10 +447,14 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
 directionalLight.position.set(0, 2, 2);
 scene.add(directionalLight);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
 scene.add(ambientLight);
 
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
+const light = new THREE.PointLight( 0xffffff, 1 );
+light.position.set( 0, 50, 0 );
+scene.add( light );
+
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 camera.position.set(0, 0, 4);
