@@ -21,15 +21,17 @@ controls.enableDamping = true;
 controls.dampingFactor = 0.05;
 
 // Lighting
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
-directionalLight.position.set(2, 2, 2);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.75);
+directionalLight.position.set(0, 4, 0);
 scene.add(directionalLight);
-scene.add(new THREE.AmbientLight(0x404040));
-
+scene.add(new THREE.AmbientLight(0xffffff, 2));
+const light = new THREE.PointLight( 0xffffff, 1 );
+light.position.set( 0, 50, 0 );
+scene.add( light );
 // Globals
 const width = 4;
 const height = 2;
-const segments = 50;
+const segments =400;
 let currentMesh;
 let originalPositions;
 
@@ -66,7 +68,7 @@ function createMesh() {
 
   const material = new THREE.MeshStandardMaterial({
     map: displacementTexture,
-    roughness: 0.5,
+    roughness: 0.4,
     metalness: 0.1,
     side: THREE.DoubleSide,
   });
@@ -141,6 +143,16 @@ function exportGLB(mesh) {
 
     exportScene.add(meshClone);
     exportScene.add(new THREE.AmbientLight(0xffffff, 1));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.75);
+    dirLight.position.set(0, 4, 0);
+    exportScene.add(dirLight);
+    
+    const ambLight = new THREE.AmbientLight(0xffffff, 4);
+    exportScene.add(ambLight);
+    
+    const pointLight = new THREE.PointLight(0xffffff, 4);
+    pointLight.position.set(0, 15, 0);
+    exportScene.add(pointLight);
 
     const exporter = new THREE.GLTFExporter();
     exporter.parse(
