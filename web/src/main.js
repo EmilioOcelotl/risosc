@@ -1,4 +1,3 @@
-const leftPanel = document.getElementById("left-panel");
 const rightPanel = document.getElementById("right-panel");
 const hydraCanvas = document.getElementById("hydra-canvas");
 
@@ -15,9 +14,6 @@ function activateTexture(index, fromWebSocket = false) {
     isActive = true;
     isWebSocketActivation = fromWebSocket;
     lastActiveTime = Date.now(); // Actualizar el tiempo de última actividad
-
-    // Iluminar solo el rectángulo correspondiente
-    illuminateRect(index);
 
     // Ocultar el mensaje NFC cuando hay textura activa
     if (messageMesh) {
@@ -66,7 +62,7 @@ function startDemoMode() {
     messageMesh.material.opacity = 1;
     messageMesh.showNFC(true);
   }
-  illuminateAllRects(true);
+  // illuminateAllRects(true);
 
   setTimeout(() => {
     demoInterval = setInterval(() => {
@@ -76,7 +72,6 @@ function startDemoMode() {
           messageMesh.material.opacity = 1;
           messageMesh.showNFC(true);
         }
-        illuminateAllRects(true);
         isActive = false;
       } else {
         // Fase de mesh
@@ -89,8 +84,6 @@ function startDemoMode() {
           messageMesh.material.opacity = 0;
           messageMesh.showNFC(false);
         }
-        illuminateRect(demoIndex);
-
         demoIndex = (demoIndex + 1) % hydraTextures.length;
       }
 
@@ -107,45 +100,10 @@ function startDemoMode() {
           messageMesh.material.opacity = 0;
           messageMesh.showNFC(false);
         }
-        illuminateRect(demoIndex);
       };
       immediateChange();
     }
   }, INITIAL_DELAY);
-}
-
-function illuminateAllRects(enable) {
-  const rectangles = document.querySelectorAll(".rectangle");
-  rectangles.forEach((rect) => {
-    rect.classList.remove("hide-circles", "active-circle", "show-circles");
-    if (enable) {
-      rect.classList.add("show-circles");
-      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-      rect.style.animation = 'none';
-      void rect.offsetWidth; // Trigger reflow
-      rect.style.animation = '';
-    } else {
-      rect.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-    }
-  });
-}
-
-function illuminateRect(index) {
-  const rectangles = document.querySelectorAll(".rectangle");
-  rectangles.forEach((rect, idx) => {
-    rect.classList.remove("show-circles", "active-circle", "manual-override");
-    rect.classList.add("hide-circles");
-    rect.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-    
-    if (idx === index) {
-      rect.classList.remove("hide-circles");
-      rect.classList.add("active-circle");
-      rect.style.backgroundColor = "rgba(255, 255, 255, 0.9)";
-      rect.style.animation = 'none';
-      void rect.offsetWidth; // Trigger reflow
-      rect.style.animation = '';
-    }
-  });
 }
 
 function stopDemoMode() {
@@ -155,7 +113,6 @@ function stopDemoMode() {
   }
 }
 
-// Definimos las 4 texturas de Hydra
 const hydraTextures = [
   () => {
     osc(19, 0.1, 0.4)
@@ -221,23 +178,6 @@ function notifyServer(index) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ index }),
   }).catch(e => console.error('Error notifying server:', e));
-}
-
-function adjustRectangles() {
-  const rectangles = document.querySelectorAll(".rectangle");
-  const panelHeight = leftPanel.clientHeight;
-  const gap = 30;
-  const padding = 30;
-
-  const availableHeight = panelHeight - 2 * padding - 3 * gap;
-  const rectHeight = availableHeight / 4;
-  const rectWidth = (rectHeight * 3) / 2;
-
-  rectangles.forEach((rect, index) => {
-    rect.style.width = `${rectWidth}px`;
-    rect.style.height = `${rectHeight}px`;
-    rect.dataset.textureIndex = index;
-  });
 }
 
 // --- THREE.JS SETUP ---
@@ -625,50 +565,6 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-function setupInteractivity() {
-  const rectangles = document.querySelectorAll(".rectangle");
-
-  rectangles.forEach((rect) => {
-    rect.addEventListener("mouseenter", () => {
-      lastActiveTime = Date.now(); // Actualizar tiempo de interacción
-      if (messageMesh) {
-        messageMesh.showNFC(true);
-      }
-
-      // Obtener índice de textura
-      const textureIndex = parseInt(rect.dataset.textureIndex);
-      
-      if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-        // Iluminar solo el rectángulo correspondiente (igual que en activateTexture)
-        illuminateRect(textureIndex);
-        activateTexture(textureIndex, false);
-      }
-    });
-
-    rect.addEventListener("mouseleave", () => {
-      setTimeout(() => {
-        if (Date.now() - lastActiveTime > 100 && !isWebSocketActivation) {
-          // Si no hay activación persistente, volver al estado de demo mode
-          if (!isActive) {
-            illuminateAllRects(true); // Iluminar todos como en demo mode
-          }
-          if (messageMesh) {
-            messageMesh.showNFC(true);
-          }
-        }
-      }, 100);
-    });
-  });
-
-  // Cuando el mouse sale del panel izquierdo completamente
-  leftPanel.addEventListener("mouseleave", () => {
-    // Solo restablecer si no hay una textura activa
-    if (!isActive) {
-      illuminateAllRects(true); // Iluminar todos como en demo mode
-    }
-  });
-}
-
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 let socket = new WebSocket(`${protocol}://${window.location.host}`);
 
@@ -715,11 +611,9 @@ function init() {
   }
 
   handleInitialNFC();
-  adjustRectangles();
-  setupInteractivity();
+
   animate();
   resetInactivityTimeout();
-  illuminateAllRects(true); 
 
 }
 

@@ -19,123 +19,21 @@ html, body {
   font-family: 'Orbitron', sans-serif;
   font-weight: 500;
   background-color: black;
-}
-
-body {
   display: flex;
-  flex-direction: row-reverse;
-  width: 1920px;
-  height: 1080px;
-  position: absolute;
-  top: 0;
-  left: 0;
+  justify-content: center; /* centra horizontalmente */
+  align-items: center;     /* centra verticalmente */
 }
 
-#left-panel {
-  width: 740px;
-  height: 1080px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 50px;
-  margin-right: 50px;
-  z-index: 0; /* Contexto base */
-
-}
-
-.rectangle {
-  background-color: transparent !important;
-  position: relative;
-  max-width: 130px;
-  max-height: 76px;
-  aspect-ratio: 3 / 2;
-  cursor: pointer;
-  overflow: visible;
-  border: none;
-}
-
-/* Luz difusa centrada con tamaño similar al rectángulo */
-.rectangle::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 160px;    /* ligeramente mayor que el rect para que salga luz */
-  height: 96px;    /* acorde con aspect-ratio 3:2 */
-  background: radial-gradient(
-    ellipse at center,
-    rgba(255, 255, 255, 0.8) 40%,
-    rgba(255, 255, 255, 0.15) 70%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(10px);
-  border-radius: 20px; /* bordes suaves acorde al rect */
-}
-
-.rectangle.show-circles::before,
-.rectangle.active-circle::before {
-  opacity: 1;
-}
-
-/* Círculo pulsante en esquina superior izquierda */
-.rectangle::after {
-  content: "";
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 2px #fff;
-  opacity: 0;
-  animation: none;
-  transition: opacity 0.3s ease;
-  z-index: 1;
-}
-
-@keyframes pulseSync {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(2.5);
-    opacity: 0;
-  }
-}
-
-.rectangle.show-circles::after,
-.rectangle.active-circle::after {
-  opacity: 1;
-  animation: pulseSync 2s infinite ease-out;
-}
-
-.rectangle:not(.show-circles):not(.active-circle)::before,
-.rectangle:not(.show-circles):not(.active-circle)::after {
-  opacity: 0 !important;
-  animation: none !important;
-}
-
-.rectangle.hide-circles::before,
-.rectangle.hide-circles::after {
-  opacity: 0 !important;
-}
-
-
-/* Estilos secundarios */
 #right-panel {
   width: 1080px;
   height: 1080px;
   background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
 }
 
 #hydra-canvas {
-  display:none;
+  display: none;
 }
