@@ -371,10 +371,11 @@ const material = new THREE.MeshPhongMaterial({
   specular: 0x222222,
   shininess: 30,
   emissive: 0x000000,
-  emissiveIntensity: 0.5,
+  emissiveIntensity: 0,
   map: vit,
   reflectivity: 0.9,
-  // combine: THREE.MixOperation
+  combine: THREE.MixOperation,
+  shading: THREE.SmoothShading
 });
 
 const cloth = new THREE.Mesh(geometry, material);
@@ -447,12 +448,8 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
 directionalLight.position.set(0, 2, 2);
 scene.add(directionalLight);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+const ambientLight = new THREE.AmbientLight(0x404040);
 scene.add(ambientLight);
-
-const light = new THREE.PointLight( 0xffffff, 1 );
-light.position.set( 0, 50, 0 );
-scene.add( light );
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
