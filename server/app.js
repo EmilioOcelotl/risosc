@@ -8,11 +8,13 @@ const app = express();
 // Middleware para JSON
 app.use(express.json());
 
-// Directorio de build de la app web
-const DIST_DIR = path.join(__dirname, '../dist');
+// Directorios
+const DIST_DIR = path.join(__dirname, '../dist');       // build principal
+const WEB_SRC_DIR = path.join(__dirname, '../web/src'); // viewers y archivos originales
 
 // 1️⃣ Servir archivos estáticos
-app.use(express.static(DIST_DIR));
+app.use(express.static(DIST_DIR));    // app principal
+app.use(express.static(WEB_SRC_DIR)); // viewers
 
 // 2️⃣ Crear servidor HTTP
 const server = http.createServer(app);
@@ -56,8 +58,8 @@ app.get('/trigger', (req, res) => {
   res.send(`Trigger recibido para índice ${nfcIndex}`);
 });
 
-// 6️⃣ SPA fallback: cualquier ruta no manejada devuelve index.html
-app.use((req, res, next) => {
+// 6️⃣ SPA fallback: cualquier ruta que no exista en dist ni en src
+app.use((req, res) => {
   res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
