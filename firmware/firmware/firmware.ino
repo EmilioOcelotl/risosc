@@ -18,161 +18,132 @@
 #define LED_B 16
 #define PN532_POWER_PIN 5
 
-// Horario de funcionamiento (puede cruzar medianoche)
-const int startHour = 22;
-const int startMinute = 40;
-const int endHour = 23;
-const int endMinute = 46;
-
 enum SystemState {
   STATE_WAITING,
-  STATE_READING,
-  STATE_READ,
-  STATE_MATCH,
-  STATE_COOLDOWN
+  STATE_PROCESSING,
+  STATE_SUCCESS,
+  STATE_ERROR
 };
 
 SystemState currentState = STATE_WAITING;
-unsigned long lastReadTime = 0;
-const unsigned long COOLDOWN_TIME = 3000;
+unsigned long lastStateChange = 0;
+const unsigned long STATE_DELAY = 2000;
 
 PN532_I2C pn532_i2c(Wire);
 NfcAdapter nfc = NfcAdapter(pn532_i2c);
 
-bool pn532Active = false;
-
 void setup() {
   Serial.begin(115200);
+  Serial.println("🚀 Iniciando lector NFC...");
 
   pinMode(LED_R, OUTPUT);
   pinMode(LED_G, OUTPUT);
   pinMode(LED_B, OUTPUT);
   pinMode(PN532_POWER_PIN, OUTPUT);
 
-  setColor(255, 255, 255); // Blanco = encendiendo
+  setColor(255, 255, 255); // Blanco = iniciando
   connectWiFi();
   syncTime();
-
-  powerPn532(false); // Arranca apagado
+  
+  digitalWrite(PN532_POWER_PIN, HIGH); // Siempre encendido
+  delay(500);
+  nfc.begin();
+  
   setState(STATE_WAITING);
 }
 
 void loop() {
-  handlePn532Schedule(); // Verifica si el módulo debe estar activo
-
-  if (!pn532Active) {
-    delay(500);
-    return;
-  }
-
   switch (currentState) {
     case STATE_WAITING:
-      if (nfc.tagPresent()) setState(STATE_READING);
-      break;
-    case STATE_READING:
-      readAndProcessTag();
-      break;
-    case STATE_READ:
-    case STATE_MATCH:
-      if (millis() - lastReadTime > 1000) {
-        setState(STATE_COOLDOWN);
-        lastReadTime = millis();
+      if (nfc.tagPresent()) {
+        setState(STATE_PROCESSING);
       }
       break;
-    case STATE_COOLDOWN:
-      if (millis() - lastReadTime > COOLDOWN_TIME) {
+      
+    case STATE_PROCESSING:
+      processTag();
+      break;
+      
+    case STATE_SUCCESS:
+    case STATE_ERROR:
+      if (millis() - lastStateChange > STATE_DELAY) {
         setState(STATE_WAITING);
       }
       break;
   }
-
+  
   delay(100);
 }
 
-// Encender o apagar el PN532
-void powerPn532(bool on) {
-  digitalWrite(PN532_POWER_PIN, on ? HIGH : LOW);
-  pn532Active = on;
-
-  if (on) {
-    delay(500);
-    nfc.begin();
-  }
-}
-
-// Verifica si se encuentra dentro del horario programado
-void handlePn532Schedule() {
-  struct tm timeinfo;
-  if (!getLocalTime(&timeinfo)) return;
-
-  int currentMinutes = timeinfo.tm_hour * 60 + timeinfo.tm_min;
-  int startMinutes = startHour * 60 + startMinute;
-  int endMinutes = endHour * 60 + endMinute;
-
-  bool isWithinSchedule;
-
-  if (startMinutes < endMinutes) {
-    isWithinSchedule = currentMinutes >= startMinutes && currentMinutes < endMinutes;
-  } else {
-    isWithinSchedule = currentMinutes >= startMinutes || currentMinutes < endMinutes;
-  }
-
-  if (isWithinSchedule) {
-    if (!pn532Active) powerPn532(true);
-  } else {
-    if (pn532Active) powerPn532(false);
-  }
-}
-
-// Sincroniza con el servidor NTP
-void syncTime() {
-  configTzTime("CST6", "pool.ntp.org", "time.nist.gov");
-  struct tm timeinfo;
-  while (!getLocalTime(&timeinfo)) {
-    delay(1000);
-  }
-}
-
-// Conecta al WiFi
-void connectWiFi() {
-  setColor(255, 255, 0); // Amarillo
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-}
-
-// Lee una etiqueta NFC
-void readAndProcessTag() {
+void processTag() {
+  Serial.println("🔍 Detectado - Leyendo...");
+  
   if (!nfc.tagPresent()) {
-    setState(STATE_WAITING);
+    Serial.println("❌ Tag perdido durante lectura");
+    setState(STATE_ERROR);
     return;
   }
 
   NfcTag tag = nfc.read();
+  
+  if (!tag.hasNdefMessage()) {
+    Serial.println("❌ Tag no contiene NDEF");
+    setState(STATE_ERROR);
+    return;
+  }
 
-  bool match = false;
-
-  if (tag.hasNdefMessage()) {
-    NdefMessage message = tag.getNdefMessage();
-    for (int i = 0; i < message.getRecordCount(); i++) {
-      NdefRecord record = message.getRecord(i);
-      if (record.getTnf() == TNF_WELL_KNOWN && record.getType() == "U") {
-        String url = getUrlFromRecord(record);
-        int index = getIndexFromUrl(url);
-        if (index >= 0 && index <= 3) {
-          sendWebNotification(index);
-          match = true;
-        }
+  NdefMessage message = tag.getNdefMessage();
+  int foundIndex = -1;
+  
+  for (int i = 0; i < message.getRecordCount(); i++) {
+    NdefRecord record = message.getRecord(i);
+    if (record.getTnf() == TNF_WELL_KNOWN && record.getType() == "U") {
+      String url = getUrlFromRecord(record);
+      Serial.println("🔗 URL: " + url);
+      
+      foundIndex = getIndexFromUrl(url);
+      if (foundIndex >= 0 && foundIndex <= 3) {
+        break;
       }
     }
   }
 
-  setState(match ? STATE_MATCH : STATE_READ);
-  lastReadTime = millis();
+  if (foundIndex >= 0) {
+    Serial.println("🎯 Índice: " + String(foundIndex));
+    sendToEndpoint(foundIndex);
+  } else {
+    Serial.println("❌ Índice no válido");
+    setState(STATE_ERROR);
+  }
 }
 
-// Extrae la URL desde el NDEF
+void sendToEndpoint(int index) {
+  Serial.println("📤 Enviando índice " + String(index) + " a: " + String(API_URL));
+  
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ Reconectando WiFi...");
+    connectWiFi();
+  }
+
+  HTTPClient http;
+  String payload = "{\"index\":" + String(index) + "}";
+  
+  http.begin(API_URL);
+  http.addHeader("Content-Type", "application/json");
+  
+  int httpCode = http.POST(payload);
+  
+  if (httpCode == 200) {
+    Serial.println("✅ Enviado correctamente");
+    setState(STATE_SUCCESS);
+  } else {
+    Serial.println("❌ Error HTTP: " + String(httpCode));
+    setState(STATE_ERROR);
+  }
+  
+  http.end();
+}
+
 String getUrlFromRecord(NdefRecord &record) {
   byte payload[record.getPayloadLength()];
   record.getPayload(payload);
@@ -193,60 +164,75 @@ String getUrlFromRecord(NdefRecord &record) {
   return url;
 }
 
-// Extrae el índice del parámetro ?nfc=
 int getIndexFromUrl(String url) {
   int paramStart = url.indexOf("?nfc=");
   if (paramStart == -1) return -1;
-  return url.substring(paramStart + 5).toInt();
+  
+  String indexStr = url.substring(paramStart + 5);
+  int ampPos = indexStr.indexOf('&');
+  if (ampPos != -1) {
+    indexStr = indexStr.substring(0, ampPos);
+  }
+  
+  return indexStr.toInt();
 }
 
-// Envía notificación web
-void sendWebNotification(int index) {
-  if (WiFi.status() != WL_CONNECTED) {
-    connectWiFi();
-    return;
-  }
-
-  HTTPClient http;
-  String payload = "{\"index\":" + String(index) + "}";
-
-  Serial.println("📤 Enviando etiqueta NFC al servidor...");
-
-  http.begin(API_URL);
-  http.addHeader("Content-Type", "application/json");
-  int httpCode = http.POST(payload);
-
-  if (httpCode > 0) {
-    Serial.printf("✅ POST enviado correctamente. Código HTTP: %d\n", httpCode);
-  } else {
-    Serial.printf("❌ Error al enviar POST. Código: %d\n", httpCode);
-  }
-
-  http.end();
-}
-
-// Cambia el estado del sistema y color del LED
 void setState(SystemState newState) {
   if (currentState == newState) return;
+  
   currentState = newState;
-
+  lastStateChange = millis();
+  
   switch (newState) {
     case STATE_WAITING:
-      setColor(255, 255, 0); break;
-    case STATE_READING:
-      setColor(0, 0, 255); break;
-    case STATE_READ:
-      setColor(255, 0, 0); break;
-    case STATE_MATCH:
-      setColor(0, 255, 0); break;
-    case STATE_COOLDOWN:
-      setColor(10, 10, 10); break;
+      setColor(0, 0, 100); // Azul = esperando
+      Serial.println("⏳ Esperando tarjeta...");
+      break;
+    case STATE_PROCESSING:
+      setColor(100, 100, 0); // Amarillo = procesando
+      Serial.println("🔄 Procesando...");
+      break;
+    case STATE_SUCCESS:
+      setColor(0, 100, 0); // Verde = éxito
+      Serial.println("🎉 Éxito!");
+      break;
+    case STATE_ERROR:
+      setColor(100, 0, 0); // Rojo = error
+      Serial.println("💥 Error");
+      break;
   }
 }
 
-// Control del LED RGB
 void setColor(int r, int g, int b) {
   analogWrite(LED_R, r);
   analogWrite(LED_G, g);
   analogWrite(LED_B, b);
+}
+
+void connectWiFi() {
+  Serial.println("📡 Conectando WiFi...");
+  setColor(255, 255, 0); // Amarillo
+  
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  unsigned long start = millis();
+  
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
+    delay(500);
+    Serial.print(".");
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✅ WiFi: " + WiFi.localIP().toString());
+  } else {
+    Serial.println("\n❌ WiFi falló");
+  }
+}
+
+void syncTime() {
+  configTzTime("CST6CDT,M3.2.0/2,M11.1.0/2", "pool.ntp.org", "time.nist.gov");
+  
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    Serial.printf("⏰ Hora: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+  }
 }
