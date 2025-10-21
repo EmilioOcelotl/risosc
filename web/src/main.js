@@ -3,15 +3,22 @@
 // main.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// Para postprocessing y shaders
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
-import { RGBShiftShader } from 'three/examples/jsm/shaders/RGBShiftShader.js';
-import { DotScreenShader } from 'three/examples/jsm/shaders/DotScreenShader.js';
 import Hydra from 'hydra-synth';
+import AudioManager from './audio/AudioManager.js';
 
+const audioManager = new AudioManager();
+
+let audioInitialized = false;
+
+function initAudioOnClick() {
+  if (audioInitialized) return;
+  
+  // Inicializar audio con el primer click
+  audioManager.initAudioContext();
+  audioInitialized = true;
+  
+  console.log('Audio inicializado - Sonidos listos');
+}
 
 const rightPanel = document.getElementById("right-panel");
 const hydraCanvas = document.getElementById("hydra-canvas");
@@ -28,7 +35,7 @@ function activateTexture(index, fromWebSocket = false) {
     currentHydraTexture = index;
     isActive = true;
     isWebSocketActivation = fromWebSocket;
-    lastActiveTime = Date.now(); // Actualizar el tiempo de última actividad
+    lastActiveTime = Date.now();
 
     // Ocultar el mensaje NFC cuando hay textura activa
     if (messageMesh) {
@@ -37,6 +44,10 @@ function activateTexture(index, fromWebSocket = false) {
 
     // Reiniciar el timeout de inactividad
     resetInactivityTimeout();
+  } else {
+    // ✅ SONIDO DE ERROR si el índice es inválido
+    audioManager.playError();
+    console.log('Índice NFC inválido:', index);
   }
 }
 
@@ -583,12 +594,16 @@ function animate() {
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 let socket = new WebSocket(`${protocol}://${window.location.host}`);
 
+// MODIFICAR el event listener del WebSocket:
 socket.addEventListener("message", (event) => {
   try {
     const data = JSON.parse(event.data);
 
     if (data.type === "activate") {
-      lastActiveTime = Date.now(); // Añadir esta línea
+      lastActiveTime = Date.now();
+
+      // ✅ SONIDO DE ÉXITO
+      audioManager.playSuccess();
 
       activateTexture(parseInt(data.index), true);
 
@@ -609,6 +624,8 @@ socket.addEventListener("message", (event) => {
       }
     }
   } catch (e) {
+    // ✅ SONIDO DE ERROR
+    audioManager.playError();
     console.error("Error processing WebSocket message:", e);
   }
 });
@@ -627,9 +644,37 @@ function init() {
 
   handleInitialNFC();
 
+    // ✅ INICIALIZAR AUDIO CON CLICKS
+  document.addEventListener('click', initAudioOnClick);
+  
+  // También con touch para dispositivos móviles
+  document.addEventListener('touchstart', initAudioOnClick);
+
+
   animate();
   resetInactivityTimeout();
 
 }
+
+document.addEventListener('keydown', (event) => {
+  if (!audioInitialized) {
+    initAudioOnClick();
+  }
+  
+  // Probar sonidos con teclas
+  if (event.key === '1') {
+    audioManager.playSuccess();
+    console.log('Probando sonido de éxito');
+  } else if (event.key === '2') {
+    audioManager.playError(); 
+    console.log('Probando sonido de error');
+  } else if (event.key === '3') {
+    audioManager.startAmbientSound();
+    console.log('Iniciando sonido ambiental');
+  } else if (event.key === '0') {
+    audioManager.stopAmbientSound();
+    console.log('Deteniendo sonido ambiental');
+  }
+});
 
 init();
