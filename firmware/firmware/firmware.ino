@@ -1,3 +1,5 @@
+// 7 horas antes
+
 #include "src/env.h"  // Contiene WIFI_SSID, WIFI_PASSWORD, API_URL
 
 #include <Wire.h>
