@@ -36,11 +36,12 @@ function initCSSMessageLayer() {
   startPhraseAnimation();
 }
 
-// Animación de frases alternantes
 function startPhraseAnimation() {
   const phrases = [
-    { static: "PASA EL CURSOR SOBRE", dynamic: "LOS CUADROS" },
-    { static: "O ACERCA TU", dynamic: "TELÉFONO" }
+    { static: "ACERCA", dynamic: "El dispositivo NFC" },
+    { static: "ESPERA", dynamic: "Una confirmación" },
+    { static: "PERCIBE", dynamic: "El resultado" },
+    { static: "RETIRA", dynamic: "Con un registro exitoso" }
   ];
   
   function updatePhrase() {
