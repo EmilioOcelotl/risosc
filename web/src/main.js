@@ -1,5 +1,3 @@
-
-
 // main.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -23,6 +21,60 @@ function initAudioOnClick() {
 const rightPanel = document.getElementById("right-panel");
 const hydraCanvas = document.getElementById("hydra-canvas");
 
+// Variables para controlar la capa CSS
+let messageOverlay, nfcAnimation, cyberpunkMessage;
+let currentPhraseIndex = 0;
+let phraseTimeout;
+
+// Inicializar elementos CSS
+function initCSSMessageLayer() {
+  messageOverlay = document.getElementById('message-overlay');
+  nfcAnimation = document.getElementById('nfc-animation');
+  cyberpunkMessage = document.getElementById('cyberpunk-message');
+  
+  // Iniciar animación de frases alternantes
+  startPhraseAnimation();
+}
+
+// Animación de frases alternantes
+function startPhraseAnimation() {
+  const phrases = [
+    { static: "PASA EL CURSOR SOBRE", dynamic: "LOS CUADROS" },
+    { static: "O ACERCA TU", dynamic: "TELÉFONO" }
+  ];
+  
+  function updatePhrase() {
+    const phrase = phrases[currentPhraseIndex];
+    document.getElementById('static-text').textContent = phrase.static;
+    document.getElementById('dynamic-text').textContent = phrase.dynamic;
+    
+    currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
+    phraseTimeout = setTimeout(updatePhrase, 4000);
+  }
+  
+  updatePhrase();
+}
+
+// Función para mostrar/ocultar NFC
+function showNFC(show) {
+  if (show) {
+    nfcAnimation.classList.remove('hidden');
+  } else {
+    nfcAnimation.classList.add('hidden');
+  }
+}
+
+// Función para mostrar/ocultar mensaje completo
+function showMessage(show) {
+  if (show) {
+    cyberpunkMessage.classList.remove('hidden');
+    showNFC(true);
+  } else {
+    cyberpunkMessage.classList.add('hidden');
+    showNFC(false);
+  }
+}
+
 function activateTexture(index, fromWebSocket = false) {
   // Detener el modo demo si está activo
   if (demoInterval) {
@@ -37,10 +89,8 @@ function activateTexture(index, fromWebSocket = false) {
     isWebSocketActivation = fromWebSocket;
     lastActiveTime = Date.now();
 
-    // Ocultar el mensaje NFC cuando hay textura activa
-    if (messageMesh) {
-      messageMesh.material.opacity = 0;
-    }
+    // Ocultar el mensaje cuando hay textura activa
+    showMessage(false);
 
     // Reiniciar el timeout de inactividad
     resetInactivityTimeout();
@@ -83,21 +133,14 @@ function startDemoMode() {
   let demoIndex = 0;
   let showInstructions = true;
 
-  // Al iniciar, mostrar instrucciones y todos iluminados
-  if (messageMesh) {
-    messageMesh.material.opacity = 1;
-    messageMesh.showNFC(true);
-  }
-  // illuminateAllRects(true);
+  // Al iniciar, mostrar instrucciones
+  showMessage(true);
 
   setTimeout(() => {
     demoInterval = setInterval(() => {
       if (showInstructions) {
         // Fase de instrucciones (texto)
-        if (messageMesh) {
-          messageMesh.material.opacity = 1;
-          messageMesh.showNFC(true);
-        }
+        showMessage(true);
         isActive = false;
       } else {
         // Fase de mesh
@@ -106,10 +149,7 @@ function startDemoMode() {
         isActive = true;
         lastActiveTime = Date.now();
 
-        if (messageMesh) {
-          messageMesh.material.opacity = 0;
-          messageMesh.showNFC(false);
-        }
+        showMessage(false);
         demoIndex = (demoIndex + 1) % hydraTextures.length;
       }
 
@@ -122,10 +162,7 @@ function startDemoMode() {
         currentHydraTexture = demoIndex;
         isActive = true;
         lastActiveTime = Date.now();
-        if (messageMesh) {
-          messageMesh.material.opacity = 0;
-          messageMesh.showNFC(false);
-        }
+        showMessage(false);
       };
       immediateChange();
     }
@@ -229,146 +266,6 @@ const hydra = new Hydra({
 // Inicializamos con la primera textura Hydra
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
-
-// --- CYBERPUNK MESSAGE (THREE.Mesh con CanvasTexture) ---
-
-async function createCyberpunkMessage() {
-  // Texto animado con NFC
-  const textAlternatives = [
-    { static: "PASA EL CURSOR SOBRE", dynamic: "LOS CUADROS" },
-    { static: "O ACERCA TU", dynamic: "TELÉFONO" }
-  ];
-  let phraseIndex = 0;
-  let fading = false;
-  let fadeProgress = 0;
-
-  await document.fonts.ready;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 1280;
-  canvas.height = 720;
-  const ctx = canvas.getContext("2d");
-
-  let nfcPulseSize = 0;
-  let nfcPulseOpacity = 0;
-  let nfcVisible = true;
-
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const nfcY = centerY + 240;
-
-  function drawNFCAnimation() {
-    ctx.clearRect(0, centerY + 80, canvas.width, 250);
-    if (!nfcVisible) return;
-
-    const startAngle = Math.PI + (Math.PI - 0.785) / 2.5;
-    const endAngle = 0 - (Math.PI - 0.785) / 2.5;
-
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-
-    [60 + nfcPulseSize * 20, 45 + nfcPulseSize * 15, 30 + nfcPulseSize * 10].forEach(radius => {
-      ctx.beginPath();
-      ctx.arc(centerX, nfcY, radius, startAngle, endAngle, false);
-      ctx.stroke();
-    });
-
-    ctx.font = "bold 36px Orbitron";
-    ctx.textAlign = "center";
-    ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
-    ctx.fillText("NFC", centerX, nfcY + 50);
-  }
-
-  function drawMainText() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-    // Ajustes de posición (valores en píxeles)
-    const titleY = centerY - 280;    // Posición del título "RisOSC"
-    const subtitleY = centerY - 200; // Posición del subtítulo
-    const instructionY = centerY - 80; // Posición de las instrucciones
-    const subtextY = centerY;        // Posición del texto adicional
-  
-    // Título principal ("RisOSC")
-    ctx.font = "bold 90px Orbitron"; // Reducido ligeramente el tamaño
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText("RisOSC", centerX, titleY);
-  
-    // Subtítulo
-    ctx.font = "italic 32px Orbitron"; // Tamaño reducido
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText("Escrituras sobre lo escaso multiplicado y lo efímero único", centerX, subtitleY);
-  
-    // Instrucciones interactivas (texto alternante)
-    const current = textAlternatives[phraseIndex];
-    const fullLine = `${current.static} ${current.dynamic}`;
-    
-    ctx.font = "bold 48px Orbitron"; // Tamaño ajustado
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText(fullLine, centerX, instructionY);
-  
-    // Texto adicional
-    ctx.font = "bold 28px Orbitron";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.fillText("para activar la experiencia", centerX, subtextY);
-  }
-
-  function animateNFCIcon() {
-    if (nfcVisible) {
-      nfcPulseSize = (nfcPulseSize + 0.018) % 1;
-      nfcPulseOpacity = Math.min(1, nfcPulseOpacity + 0.08);
-    } else {
-      nfcPulseOpacity = Math.max(0, nfcPulseOpacity - 0.05);
-    }
-
-    if (fading) {
-      fadeProgress += 0.05;
-      if (fadeProgress >= 1) {
-        fadeProgress = 0;
-        fading = false;
-        phraseIndex = (phraseIndex + 1) % textAlternatives.length;
-      }
-    }
-
-    drawMainText();
-    drawNFCAnimation();
-    texture.needsUpdate = true;
-    requestAnimationFrame(animateNFCIcon);
-  }
-
-  setInterval(() => {
-    if (!fading) fading = true;
-  }, 4000);
-
-  drawMainText();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    opacity: 1.0,
-  });
-
-  const geometry = new THREE.PlaneGeometry(4, 2);
-  const messageMesh = new THREE.Mesh(geometry, material);
-  messageMesh.position.z = 0.5;
-  messageMesh.position.y = 0;
-
-  animateNFCIcon();
-
-  messageMesh.showNFC = function (show) {
-    nfcVisible = show;
-  };
-
-  return messageMesh;
-}
-
-let messageMesh;
-createCyberpunkMessage().then(mesh => {
-  messageMesh = mesh;
-  scene.add(messageMesh);
-});
 
 // --- GEOMETRY SETUP ---
 
@@ -555,6 +452,7 @@ function updateClothGeometry() {
   positions.needsUpdate = true;
   cloth.geometry.computeVertexNormals();
 }
+
 function animate() {
   requestAnimationFrame(animate);
 
@@ -575,16 +473,12 @@ function animate() {
     updateClothGeometry();
     cloth.rotation.z += 0.01;
 
-    if (messageMesh) {
-      messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.05, 0);
-    }
+    // Los mensajes se controlan directamente en activateTexture y startDemoMode
   } else {
     if (scene.children.includes(cloth)) scene.remove(cloth);
     if (scene.children.includes(wireframeCube)) scene.remove(wireframeCube);
 
-    if (messageMesh) {
-      messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.05, 1);
-    }
+    // Los mensajes se controlan directamente en activateTexture y startDemoMode
   }
 
   controls.update();
@@ -636,25 +530,29 @@ socket.addEventListener("close", () => {
   }, 5000);
 });
 
-
 function init() {
-  if (messageMesh) {
-    messageMesh.showNFC(true);
-  }
+  // Inicializar capa de mensajes CSS
+  initCSSMessageLayer();
+  
+  // Mostrar mensaje inicial
+  showMessage(true);
 
   handleInitialNFC();
 
-    // ✅ INICIALIZAR AUDIO CON CLICKS
+  // ✅ INICIALIZAR AUDIO CON CLICKS
   document.addEventListener('click', initAudioOnClick);
   
   // También con touch para dispositivos móviles
   document.addEventListener('touchstart', initAudioOnClick);
 
-
   animate();
   resetInactivityTimeout();
-
 }
+
+// Limpiar timeout al cerrar
+window.addEventListener('beforeunload', () => {
+  if (phraseTimeout) clearTimeout(phraseTimeout);
+});
 
 document.addEventListener('keydown', (event) => {
   if (!audioInitialized) {

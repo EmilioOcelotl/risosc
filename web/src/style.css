@@ -20,8 +20,8 @@ html, body {
   font-weight: 500;
   background-color: black;
   display: flex;
-  justify-content: center; /* centra horizontalmente */
-  align-items: center;     /* centra verticalmente */
+  justify-content: center;
+  align-items: center;
 }
 
 #right-panel {
@@ -32,8 +32,137 @@ html, body {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+  position: relative;
 }
 
 #hydra-canvas {
+  display: none;
+}
+
+/* Capa de mensajes superpuesta */
+#message-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#cyberpunk-message {
+  text-align: center;
+  color: white;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+#main-title {
+  font-size: 90px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+#subtitle {
+  font-size: 32px;
+  font-style: italic;
+  margin-bottom: 60px;
+  opacity: 0.8;
+}
+
+#instructions {
+  font-size: 48px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+#static-text, #dynamic-text {
+  display: inline-block;
+}
+
+#subtext {
+  font-size: 28px;
+  opacity: 0.7;
+  margin-bottom: 80px;
+}
+
+/* Animación NFC */
+#nfc-animation {
+  position: relative;
+  height: 120px;
+  margin-top: 40px;
+}
+
+.nfc-circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border: 3px solid white;
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-right-color: transparent;
+  animation: nfcPulse 2s ease-in-out infinite;
+}
+
+.nfc-circle:nth-child(1) {
+  width: 120px;
+  height: 120px;
+  animation-delay: 0s;
+}
+
+.nfc-circle:nth-child(2) {
+  width: 90px;
+  height: 90px;
+  animation-delay: 0.3s;
+}
+
+.nfc-circle:nth-child(3) {
+  width: 60px;
+  height: 60px;
+  animation-delay: 0.6s;
+}
+
+#nfc-text {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  font-weight: bold;
+  opacity: 1;
+  animation: nfcFade 2s ease-in-out infinite;
+}
+
+@keyframes nfcPulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+}
+
+@keyframes nfcFade {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Estados para mostrar/ocultar mensajes */
+#cyberpunk-message.hidden {
+  opacity: 0;
+}
+
+#nfc-animation.hidden {
   display: none;
 }
