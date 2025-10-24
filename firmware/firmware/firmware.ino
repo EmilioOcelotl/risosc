@@ -16,7 +16,6 @@
 #define LED_R 14
 #define LED_G 15
 #define LED_B 16
-#define PN532_POWER_PIN 5
 #define BUZZER_PIN 4 // Buzzer pasivo
 
 // Estados del sistema
@@ -32,6 +31,7 @@ enum SystemState {
 SystemState currentState = STATE_INIT;
 unsigned long lastStateChange = 0;
 const unsigned long STATE_DELAY = 2000;
+const unsigned long ERROR_DELAY = 800; // Más corto para error
 unsigned long lastAnimationTime = 0;
 
 // NFC
@@ -87,15 +87,12 @@ void setup() {
   pinMode(LED_R, OUTPUT);
   pinMode(LED_G, OUTPUT);
   pinMode(LED_B, OUTPUT);
-  pinMode(PN532_POWER_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
-  setColor(255, 255, 255); // Blanco = iniciando
+  setColor(0, 0, 0); // Blanco = iniciando (0,0,0 = encendido para RGB)
   connectWiFi();
   syncTime();
 
-  digitalWrite(PN532_POWER_PIN, HIGH); // Siempre encendido
-  delay(500);
   nfc.begin();
 
   setState(STATE_WAITING);
@@ -120,6 +117,16 @@ void loop() {
     noTone(BUZZER_PIN);  // asegurarse de apagar buzzer en otros estados
   }
 
+  // Verificar conexión WiFi periódicamente
+  static unsigned long lastWifiCheck = 0;
+  if (now - lastWifiCheck > 30000) { // Cada 30 segundos
+    lastWifiCheck = now;
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("⚠️ WiFi desconectado, reconectando...");
+      connectWiFi();
+    }
+  }
+
   // Manejo estados
   switch (currentState) {
     case STATE_WAITING:
@@ -131,8 +138,11 @@ void loop() {
       break;
 
     case STATE_SUCCESS:
-    case STATE_ERROR:
       if (now - lastStateChange > STATE_DELAY) setState(STATE_WAITING);
+      break;
+
+    case STATE_ERROR:
+      if (now - lastStateChange > ERROR_DELAY) setState(STATE_WAITING);
       break;
 
     case STATE_PARTY:
@@ -190,7 +200,7 @@ void sendToEndpoint(int index) {
   Serial.println("📤 Enviando índice " + String(index) + " a: " + String(API_URL));
 
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️ Reconectando WiFi...");
+    Serial.println("⚠️ WiFi desconectado, intentando reconectar...");
     connectWiFi();
   }
 
@@ -273,11 +283,11 @@ void animateLEDs(unsigned long now) {
       break;
 
     case STATE_PROCESSING:
-      pulseColor(255, 200, 0, 500);
+      pulseColor(0, 55, 255, 500); // Naranja invertido (0,55,255)
       break;
 
     case STATE_SUCCESS:
-      pulseColor(0, 255, 0, 700);
+      pulseColor(255, 0, 255, 700); // Verde invertido (255,0,255)
       break;
 
     case STATE_ERROR:
@@ -289,7 +299,7 @@ void animateLEDs(unsigned long now) {
       break;
 
     case STATE_INIT:
-      fadeToColor(255, 255, 255, 500);
+      fadeToColor(0, 0, 0, 500); // Blanco invertido (0,0,0)
       break;
   }
 }
@@ -316,15 +326,15 @@ void pulseColor(int r, int g, int b, int pulseTime) {
 
 void pulseDoubleRed(int pulseTime, int pause) {
   int t = millis() % (pulseTime*2 + pause);
-  if (t < pulseTime || (t >= pulseTime + pause && t < pulseTime*2 + pause)) setColor(255,0,0);
-  else setColor(0,0,0);
+  if (t < pulseTime || (t >= pulseTime + pause && t < pulseTime*2 + pause)) setColor(0, 255, 255); // Rojo invertido (0,255,255)
+  else setColor(255, 255, 255); // Apagado
 }
 
 void randomColorFlash() {
   static int lastChange = 0;
   if (millis() - lastChange > 150) {
     lastChange = millis();
-    setColor(random(100,255), random(100,255), random(100,255));
+    setColor(random(0,155), random(0,155), random(0,155)); // Valores bajos para colores brillantes
   }
 }
 
@@ -354,18 +364,44 @@ void hsvToRgb(float h, float s, float v, int &r, int &g, int &b) {
 // ------------------- WiFi y NTP -------------------
 void connectWiFi() {
   Serial.println("📡 Conectando WiFi...");
-  setColor(255, 255, 0); // Amarillo
+  setColor(0, 0, 255); // Amarillo invertido (0,0,255)
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  unsigned long start = millis();
-
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
-    delay(500);
-    Serial.print(".");
+  
+  unsigned long startAttemptTime = millis();
+  const unsigned long timeout = 10000; // 10 segundos por intento
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    // Animación de conexión (parpadeo amarillo invertido)
+    static unsigned long lastBlink = 0;
+    static bool ledState = false;
+    
+    if (millis() - lastBlink > 500) {
+      lastBlink = millis();
+      ledState = !ledState;
+      if (ledState) {
+        setColor(0, 0, 255); // Amarillo invertido
+      } else {
+        setColor(255, 255, 255); // Apagado
+      }
+    }
+    
+    // Verificar timeout del intento actual
+    if (millis() - startAttemptTime > timeout) {
+      Serial.println("⏳ Timeout, reintentando conexión WiFi...");
+      WiFi.disconnect();
+      delay(1001);
+      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      startAttemptTime = millis();
+    }
+    
+    delay(100);
   }
-
-  if (WiFi.status() == WL_CONNECTED) Serial.println("\n✅ WiFi: " + WiFi.localIP().toString());
-  else Serial.println("\n❌ WiFi falló");
+  
+  // Conexión exitosa
+  Serial.println("\n✅ WiFi conectado: " + WiFi.localIP().toString());
+  // Restaurar color del estado actual
+  setState(currentState);
 }
 
 void syncTime() {
@@ -374,3 +410,5 @@ void syncTime() {
   struct tm timeinfo;
   if (getLocalTime(&timeinfo)) Serial.printf("⏰ Hora: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 }
+
+// comentario
