@@ -385,28 +385,63 @@ function animate() {
 }
 
 // --- WebSocket ---
+// Conexión robusta con reconexión automática y manejo de errores
+let socket;
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-let socket = new WebSocket(`${protocol}://${window.location.host}`);
 
-socket.addEventListener("message", (event) => {
-  try {
-    const data = JSON.parse(event.data);
-    if (data.type === "activate") {
-      lastActiveTime = Date.now();
-      audioManager.playSuccess();
-      activateTexture(parseInt(data.index), true);
+function connectWebSocket() {
+  socket = new WebSocket(`${protocol}://${window.location.host}`);
+
+  socket.addEventListener("open", () => {
+    console.log("🔗 WebSocket conectado");
+  });
+
+  socket.addEventListener("message", (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === "activate") {
+        lastActiveTime = Date.now();
+        audioManager.playSuccess();
+        activateTexture(parseInt(data.index), true);
+      } else if (data.type === "ping") {
+        socket.send(JSON.stringify({ type: "pong" }));
+      }
+    } catch (e) {
+      console.error("Error procesando mensaje WebSocket:", e);
+      audioManager.playError();
     }
-  } catch (e) {
-    audioManager.playError();
-    console.error("Error processing WebSocket message:", e);
-  }
-});
+  });
 
-socket.addEventListener("close", () => {
-  setTimeout(() => {
-    socket = new WebSocket(`${protocol}://${window.location.host}`);
-  }, 5000);
-});
+  socket.addEventListener("close", () => {
+    console.warn("⚠️ WebSocket cerrado, intentando reconectar en 5s...");
+    setTimeout(connectWebSocket, 5000);
+  });
+
+  socket.addEventListener("error", (err) => {
+    console.error("❌ Error en WebSocket:", err);
+    socket.close(); // fuerza el cierre para que se dispare la reconexión
+  });
+}
+
+// Enviar datos al servidor con verificación de conexión
+function safeSend(data) {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(data));
+  } else {
+    console.warn("⚠️ No se puede enviar, socket no está listo");
+  }
+}
+
+// Mantener la conexión viva con un “ping” periódico
+setInterval(() => {
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    safeSend({ type: "ping" });
+  }
+}, 30000);
+
+// Inicializar la conexión
+connectWebSocket();
+
 
 // --- Init ---
 function init() {
