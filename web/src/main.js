@@ -1,5 +1,3 @@
-
-
 // main.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -7,138 +5,67 @@ import Hydra from 'hydra-synth';
 import AudioManager from './audio/AudioManager.js';
 
 const audioManager = new AudioManager();
-
 let audioInitialized = false;
 
 function initAudioOnClick() {
   if (audioInitialized) return;
-  
-  // Inicializar audio con el primer click
   audioManager.initAudioContext();
   audioInitialized = true;
-  
   console.log('Audio inicializado - Sonidos listos');
 }
 
+// --- HTML Elements ---
 const rightPanel = document.getElementById("right-panel");
 const hydraCanvas = document.getElementById("hydra-canvas");
 
-function activateTexture(index, fromWebSocket = false) {
-  // Detener el modo demo si está activo
-  if (demoInterval) {
-    stopDemoMode();
+// CSS messages
+let messageOverlay, nfcAnimation, cyberpunkMessage;
+let currentPhraseIndex = 0;
+let phraseTimeout;
+
+function initCSSMessageLayer() {
+  messageOverlay = document.getElementById('message-overlay');
+  nfcAnimation = document.getElementById('nfc-animation');
+  cyberpunkMessage = document.getElementById('cyberpunk-message');
+  startPhraseAnimation();
+}
+
+function startPhraseAnimation() {
+  const phrases = [
+    { static: "ACERCA", dynamic: "El dispositivo NFC" },
+    { static: "ESPERA", dynamic: "Una confirmación" },
+    { static: "PERCIBE", dynamic: "El resultado" },
+    { static: "RETIRA", dynamic: "Con un registro exitoso" }
+  ];
+
+  function updatePhrase() {
+    const phrase = phrases[currentPhraseIndex];
+    document.getElementById('static-text').textContent = phrase.static;
+    document.getElementById('dynamic-text').textContent = phrase.dynamic;
+
+    currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
+    phraseTimeout = setTimeout(updatePhrase, 4000);
   }
 
-  if (index >= 0 && index < hydraTextures.length) {
-    // Activar la textura correspondiente
-    hydraTextures[index]();
-    currentHydraTexture = index;
-    isActive = true;
-    isWebSocketActivation = fromWebSocket;
-    lastActiveTime = Date.now();
+  updatePhrase();
+}
 
-    // Ocultar el mensaje NFC cuando hay textura activa
-    if (messageMesh) {
-      messageMesh.material.opacity = 0;
-    }
+function showNFC(show) {
+  if (show) nfcAnimation.classList.remove('hidden');
+  else nfcAnimation.classList.add('hidden');
+}
 
-    // Reiniciar el timeout de inactividad
-    resetInactivityTimeout();
+function showMessage(show) {
+  if (show) {
+    cyberpunkMessage.classList.remove('hidden');
+    showNFC(true);
   } else {
-    // ✅ SONIDO DE ERROR si el índice es inválido
-    audioManager.playError();
-    console.log('Índice NFC inválido:', index);
+    cyberpunkMessage.classList.add('hidden');
+    showNFC(false);
   }
 }
 
-let inactivityTimeout = null;
-let demoInterval = null;
-const INACTIVITY_DELAY = 30000; // 30 segundos
-
-function resetInactivityTimeout() {
-  // Limpiar cualquier timeout existente
-  if (inactivityTimeout) clearTimeout(inactivityTimeout);
-  
-  // Configurar nuevo timeout
-  inactivityTimeout = setTimeout(() => {
-    // Solo activar demo mode si no hay actividad reciente
-    if (Date.now() - lastActiveTime >= INACTIVITY_DELAY) {
-      isActive = false;
-      isWebSocketActivation = false;
-      resetCameraPosition();
-      startDemoMode();
-    }
-  }, INACTIVITY_DELAY);
-}
-
-function startDemoMode() {
-  if (demoInterval || Date.now() - lastActiveTime < INACTIVITY_DELAY) {
-    return;
-  }
-
-  const TEXT_PHASE_DURATION = 10000;
-  const MESH_PHASE_DURATION = 5000;
-  const INITIAL_DELAY = 3000;
-  
-  let demoIndex = 0;
-  let showInstructions = true;
-
-  // Al iniciar, mostrar instrucciones y todos iluminados
-  if (messageMesh) {
-    messageMesh.material.opacity = 1;
-    messageMesh.showNFC(true);
-  }
-  // illuminateAllRects(true);
-
-  setTimeout(() => {
-    demoInterval = setInterval(() => {
-      if (showInstructions) {
-        // Fase de instrucciones (texto)
-        if (messageMesh) {
-          messageMesh.material.opacity = 1;
-          messageMesh.showNFC(true);
-        }
-        isActive = false;
-      } else {
-        // Fase de mesh
-        hydraTextures[demoIndex]();
-        currentHydraTexture = demoIndex;
-        isActive = true;
-        lastActiveTime = Date.now();
-
-        if (messageMesh) {
-          messageMesh.material.opacity = 0;
-          messageMesh.showNFC(false);
-        }
-        demoIndex = (demoIndex + 1) % hydraTextures.length;
-      }
-
-      showInstructions = !showInstructions;
-    }, showInstructions ? TEXT_PHASE_DURATION : MESH_PHASE_DURATION);
-    
-    if (!showInstructions) {
-      const immediateChange = () => {
-        hydraTextures[demoIndex]();
-        currentHydraTexture = demoIndex;
-        isActive = true;
-        lastActiveTime = Date.now();
-        if (messageMesh) {
-          messageMesh.material.opacity = 0;
-          messageMesh.showNFC(false);
-        }
-      };
-      immediateChange();
-    }
-  }, INITIAL_DELAY);
-}
-
-function stopDemoMode() {
-  if (demoInterval) {
-    clearInterval(demoInterval);
-    demoInterval = null;
-  }
-}
-
+// --- Hydra Textures ---
 const hydraTextures = [
   () => {
     osc(19, 0.1, 0.4)
@@ -185,15 +112,17 @@ let lastActiveTime = 0;
 let isWebSocketActivation = false;
 let activationTimeout = null;
 
+// --- NFC / WebSocket ---
 function handleInitialNFC() {
   const params = new URLSearchParams(window.location.search);
   const nfcIndex = parseInt(params.get('nfc'));
   if (!isNaN(nfcIndex) && nfcIndex >= 0 && nfcIndex < hydraTextures.length) {
-    lastActiveTime = Date.now(); // Añadir esta línea
+    lastActiveTime = Date.now();
     hydraTextures[nfcIndex]();
     currentHydraTexture = nfcIndex;
     isActive = true;
     lastActiveTime = Date.now();
+    showMessage(false); // Ocultar texto en estado activo
     notifyServer(nfcIndex);
   }
 }
@@ -206,178 +135,42 @@ function notifyServer(index) {
   }).catch(e => console.error('Error notifying server:', e));
 }
 
-// --- THREE.JS SETUP ---
+function activateTexture(index, fromWebSocket = false) {
+  if (index >= 0 && index < hydraTextures.length) {
+    hydraTextures[index]();
+    currentHydraTexture = index;
+    isActive = true;
+    isWebSocketActivation = fromWebSocket;
+    lastActiveTime = Date.now();
+    showMessage(false); // Ocultar texto en estado activo
+    resetInactivityTimeout();
+  } else {
+    audioManager.playError();
+    console.log('Índice NFC inválido:', index);
+  }
+}
 
+// --- THREE.JS SETUP ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000000);
 
-const camera = new THREE.PerspectiveCamera(75, 1280 / 1080, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  powerPreference: "high-performance",
-});
-renderer.setSize(1280, 1080);
+const camera = new THREE.PerspectiveCamera(75, 1920 / 1080, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(1920, 1080);
 rightPanel.appendChild(renderer.domElement);
 
 // Hydra setup
-const hydra = new Hydra({
-  canvas: hydraCanvas,
-  autoLoop: true,
-  detectAudio: false,
-});
-
-// Inicializamos con la primera textura Hydra
+const hydra = new Hydra({ canvas: hydraCanvas, autoLoop: true, detectAudio: false });
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
 
-// --- CYBERPUNK MESSAGE (THREE.Mesh con CanvasTexture) ---
-
-async function createCyberpunkMessage() {
-  // Texto animado con NFC
-  const textAlternatives = [
-    { static: "PASA EL CURSOR SOBRE", dynamic: "LOS CUADROS" },
-    { static: "O ACERCA TU", dynamic: "TELÉFONO" }
-  ];
-  let phraseIndex = 0;
-  let fading = false;
-  let fadeProgress = 0;
-
-  await document.fonts.ready;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 1280;
-  canvas.height = 720;
-  const ctx = canvas.getContext("2d");
-
-  let nfcPulseSize = 0;
-  let nfcPulseOpacity = 0;
-  let nfcVisible = true;
-
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2;
-  const nfcY = centerY + 240;
-
-  function drawNFCAnimation() {
-    ctx.clearRect(0, centerY + 80, canvas.width, 250);
-    if (!nfcVisible) return;
-
-    const startAngle = Math.PI + (Math.PI - 0.785) / 2.5;
-    const endAngle = 0 - (Math.PI - 0.785) / 2.5;
-
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = `rgba(255, 255, 255, 1)`;
-
-    [60 + nfcPulseSize * 20, 45 + nfcPulseSize * 15, 30 + nfcPulseSize * 10].forEach(radius => {
-      ctx.beginPath();
-      ctx.arc(centerX, nfcY, radius, startAngle, endAngle, false);
-      ctx.stroke();
-    });
-
-    ctx.font = "bold 36px Orbitron";
-    ctx.textAlign = "center";
-    ctx.fillStyle = `rgba(255, 255, 255, ${nfcPulseOpacity})`;
-    ctx.fillText("NFC", centerX, nfcY + 50);
-  }
-
-  function drawMainText() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  
-    // Ajustes de posición (valores en píxeles)
-    const titleY = centerY - 280;    // Posición del título "RisOSC"
-    const subtitleY = centerY - 200; // Posición del subtítulo
-    const instructionY = centerY - 80; // Posición de las instrucciones
-    const subtextY = centerY;        // Posición del texto adicional
-  
-    // Título principal ("RisOSC")
-    ctx.font = "bold 90px Orbitron"; // Reducido ligeramente el tamaño
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText("RisOSC", centerX, titleY);
-  
-    // Subtítulo
-    ctx.font = "italic 32px Orbitron"; // Tamaño reducido
-    ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.fillText("Escrituras sobre lo escaso multiplicado y lo efímero único", centerX, subtitleY);
-  
-    // Instrucciones interactivas (texto alternante)
-    const current = textAlternatives[phraseIndex];
-    const fullLine = `${current.static} ${current.dynamic}`;
-    
-    ctx.font = "bold 48px Orbitron"; // Tamaño ajustado
-    ctx.fillStyle = "rgba(255, 255, 255, 1)";
-    ctx.fillText(fullLine, centerX, instructionY);
-  
-    // Texto adicional
-    ctx.font = "bold 28px Orbitron";
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
-    ctx.fillText("para activar la experiencia", centerX, subtextY);
-  }
-
-  function animateNFCIcon() {
-    if (nfcVisible) {
-      nfcPulseSize = (nfcPulseSize + 0.018) % 1;
-      nfcPulseOpacity = Math.min(1, nfcPulseOpacity + 0.08);
-    } else {
-      nfcPulseOpacity = Math.max(0, nfcPulseOpacity - 0.05);
-    }
-
-    if (fading) {
-      fadeProgress += 0.05;
-      if (fadeProgress >= 1) {
-        fadeProgress = 0;
-        fading = false;
-        phraseIndex = (phraseIndex + 1) % textAlternatives.length;
-      }
-    }
-
-    drawMainText();
-    drawNFCAnimation();
-    texture.needsUpdate = true;
-    requestAnimationFrame(animateNFCIcon);
-  }
-
-  setInterval(() => {
-    if (!fading) fading = true;
-  }, 4000);
-
-  drawMainText();
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const material = new THREE.MeshBasicMaterial({
-    map: texture,
-    transparent: true,
-    opacity: 1.0,
-  });
-
-  const geometry = new THREE.PlaneGeometry(4, 2);
-  const messageMesh = new THREE.Mesh(geometry, material);
-  messageMesh.position.z = 0.5;
-  messageMesh.position.y = 0;
-
-  animateNFCIcon();
-
-  messageMesh.showNFC = function (show) {
-    nfcVisible = show;
-  };
-
-  return messageMesh;
-}
-
-let messageMesh;
-createCyberpunkMessage().then(mesh => {
-  messageMesh = mesh;
-  scene.add(messageMesh);
-});
-
-// --- GEOMETRY SETUP ---
-
+// --- Geometry & Cloth ---
 const width = 4;
 const height = 2;
 const segments = 200;
 const geometry = new THREE.PlaneGeometry(width, height, segments, segments);
 
-const material = new THREE.MeshPhongMaterial({
+const clothMaterial = new THREE.MeshPhongMaterial({
   color: 0xffffff,
   specular: 0x222222,
   shininess: 30,
@@ -389,72 +182,75 @@ const material = new THREE.MeshPhongMaterial({
   shading: THREE.SmoothShading
 });
 
-const cloth = new THREE.Mesh(geometry, material);
+const cloth = new THREE.Mesh(geometry, clothMaterial);
 cloth.rotation.x = -Math.PI / 4;
-cloth.rotation.z += 0.01;
 cloth.position.z = 0;
+cloth.position.y = 0.25; 
 
+// --- Sobel Shader Modificado ---
+const SobelShader = {
+  uniforms: { 
+    tDiffuse: { value: vit }, 
+    resolution: { value: new THREE.Vector2(1920, 1080) },
+    time: { value: 0 } // Añadir tiempo para animación continua
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() { 
+      vUv = uv; 
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); 
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec2 resolution;
+    uniform float time;
+    varying vec2 vUv;
+    
+    void main() {
+      float dx = 1.0 / resolution.x;
+      float dy = 1.0 / resolution.y;
+      
+      // Añadir leve animación a las coordenadas de muestreo
+      vec2 animatedUV = vUv + vec2(sin(time * 0.5 + vUv.y * 5.0) * 0.001, cos(time * 0.3 + vUv.x * 5.0) * 0.001);
+      
+      vec3 tl = texture2D(tDiffuse, animatedUV + vec2(-dx,-dy)).rgb;
+      vec3 t  = texture2D(tDiffuse, animatedUV + vec2(0.0,-dy)).rgb;
+      vec3 tr = texture2D(tDiffuse, animatedUV + vec2(dx,-dy)).rgb;
+      vec3 l  = texture2D(tDiffuse, animatedUV + vec2(-dx,0.0)).rgb;
+      vec3 r  = texture2D(tDiffuse, animatedUV + vec2(dx,0.0)).rgb;
+      vec3 bl = texture2D(tDiffuse, animatedUV + vec2(-dx,dy)).rgb;
+      vec3 b  = texture2D(tDiffuse, animatedUV + vec2(0.0,dy)).rgb;
+      vec3 br = texture2D(tDiffuse, animatedUV + vec2(dx,dy)).rgb;
+      
+      vec3 hor = -tl - 2.0*l - bl + tr + 2.0*r + br;
+      vec3 ver = -tl - 2.0*t - tr + bl + 2.0*b + br;
+      float edge = length(hor + ver);
+      
+      // Añadir efecto de parpadeo sutil
+      float pulse = 0.8 + 0.2 * sin(time * 2.0);
+      vec3 color = vec3(edge * pulse);
+      
+      gl_FragColor = vec4(color, 1.0);
+    }
+  `
+};
+
+const clothSobelMaterial = new THREE.ShaderMaterial({
+  uniforms: SobelShader.uniforms,
+  vertexShader: SobelShader.vertexShader,
+  fragmentShader: SobelShader.fragmentShader
+});
+
+// --- Cube & Wireframe ---
 const cubeSize = 3;
 const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-
 const edges = new THREE.EdgesGeometry(cubeGeometry);
-const lineMaterial = new THREE.LineBasicMaterial({
-  color: 0xffffff,
-  transparent: true,
-  opacity: 0.4,
-  linewidth: 4,
-});
+const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, linewidth: 4 });
 const wireframeCube = new THREE.LineSegments(edges, lineMaterial);
 scene.add(wireframeCube);
 
-const vertexSphereGeometry = new THREE.SphereGeometry(0.02, 12, 12);
-const vertexSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-const cubeVertices = cubeGeometry.attributes.position;
-for (let i = 0; i < cubeVertices.count; i++) {
-  const vertex = new THREE.Vector3().fromBufferAttribute(cubeVertices, i);
-  const sphere = new THREE.Mesh(vertexSphereGeometry, vertexSphereMaterial);
-  sphere.position.copy(vertex);
-  wireframeCube.add(sphere);
-}
-
-const circleRadius = cubeSize / 2;
-const circleSegments = 64;
-const circleGeometry = new THREE.CircleGeometry(circleRadius, circleSegments);
-const circleMaterial = new THREE.MeshBasicMaterial({
-  color: 0xffffff,
-  side: THREE.DoubleSide,
-  transparent: true,
-  opacity: 0,
-  wireframe: false,
-});
-
-const circle = new THREE.Mesh(circleGeometry, circleMaterial);
-circle.rotation.x = Math.PI / 2;
-circle.position.y = -cubeSize / 2;
-wireframeCube.add(circle);
-
-const circleEdges = new THREE.EdgesGeometry(circleGeometry);
-const circleLineMaterial = new THREE.LineBasicMaterial({
-  color: 0xffffff,
-  linewidth: 0.01,
-  transparent: true,
-  opacity: 0.4,
-});
-const circleLine = new THREE.LineSegments(circleEdges, circleLineMaterial);
-circleLine.rotation.x = Math.PI / 2;
-circleLine.position.y = -cubeSize / 2 + 0.01;
-wireframeCube.add(circleLine);
-
-const smallSphereGeometry = new THREE.SphereGeometry(0.02, 16, 16);
-const smallSphereMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const orbitingSphere = new THREE.Mesh(smallSphereGeometry, smallSphereMaterial);
-wireframeCube.add(orbitingSphere);
-
-let orbitAngle = 0;
-const orbitSpeed = 0.02;
-const orbitHeight = -cubeSize / 2 + 0.02;
-
+// --- Lights ---
 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.75);
 directionalLight.position.set(0, 2, 2);
 scene.add(directionalLight);
@@ -483,10 +279,7 @@ function multiWave(x, y, t) {
   const wave1 = Math.sin(x * 4.0 + t * 1.0) * 0.3;
   const wave2 = Math.cos(x * 3.5 + y * 2.0 + t * 1.3) * 0.2;
   const wave3 = Math.sin(x * 1.0 + y * 1.5 + t * 0.7) * 0.8;
-  const wave4 =
-    Math.sin(x * 5.2 + y * 3.7 + t * 1.7) *
-    Math.cos(x * 2.3 + y * 1.9 + t * 0.9) *
-    0.05;
+  const wave4 = Math.sin(x * 5.2 + y * 3.7 + t * 1.7) * Math.cos(x * 2.3 + y * 1.9 + t * 0.9) * 0.05;
   return wave1 + wave2 * wave3 + wave4;
 }
 
@@ -509,26 +302,15 @@ function updateClothGeometry() {
   const smoothingRadius = 0.25;
 
   for (let i = 0; i < positions.count; i++) {
-    const ix = i * 3;
-    const iy = i * 3 + 1;
-    const iz = i * 3 + 2;
-
-    const x = originalPositions[ix];
-    const y = originalPositions[iy];
-
-    const u = x / width + 0.5;
-    const v = y / height + 0.5;
-
-    let totalR = 0,
-      totalG = 0,
-      totalB = 0;
-    let sampleCount = 0;
+    const ix = i * 3, iy = i * 3 + 1, iz = i * 3 + 2;
+    const x = originalPositions[ix], y = originalPositions[iy];
+    const u = x / width + 0.5, v = y / height + 0.5;
+    let totalR = 0, totalG = 0, totalB = 0, sampleCount = 0;
 
     for (let dx = -smoothingRadius; dx <= smoothingRadius; dx++) {
       for (let dy = -smoothingRadius; dy <= smoothingRadius; dy++) {
         const px = Math.floor(u * (canvas.width - 1)) + dx;
         const py = Math.floor((1 - v) * (canvas.height - 1)) + dy;
-
         if (px >= 0 && px < canvas.width && py >= 0 && py < canvas.height) {
           const pixelIndex = (py * canvas.width + px) * 4;
           totalR += data[pixelIndex];
@@ -545,86 +327,76 @@ function updateClothGeometry() {
     const intensity = smoothstep(0.2, 0.8, r * 0.3 + g * 0.6 + b * 0.1);
     const waveDisplacement = multiWave(x, y, timeUniform.value);
 
+    // Aplicar distorsión en AMBOS estados
     positions.array[iz] = waveDisplacement + (intensity - 0.5) * colorInfluence;
-    positions.array[ix] =
-      x + Math.sin(y * 2.0 + timeUniform.value * 1.5) * 0.01;
-    positions.array[iy] =
-      y + Math.cos(x * 1.7 + timeUniform.value * 1.2) * 0.01;
+    positions.array[ix] = x + Math.sin(y * 2.0 + timeUniform.value * 1.5) * 0.01;
+    positions.array[iy] = y + Math.cos(x * 1.7 + timeUniform.value * 1.2) * 0.01;
   }
 
   positions.needsUpdate = true;
   cloth.geometry.computeVertexNormals();
 }
+
+// --- Inactivity / Demo ---
+let inactivityTimeout = null;
+const INACTIVITY_DELAY = 30000;
+
+function resetInactivityTimeout() {
+  if (inactivityTimeout) clearTimeout(inactivityTimeout);
+  inactivityTimeout = setTimeout(() => {
+    if (Date.now() - lastActiveTime >= INACTIVITY_DELAY) {
+      isActive = false;
+      isWebSocketActivation = false;
+      showMessage(true); // Mostrar texto en estado pasivo
+      resetCameraPosition();
+    }
+  }, INACTIVITY_DELAY);
+}
+
+// --- Animate ---
 function animate() {
   requestAnimationFrame(animate);
 
-  if (currentHydraTexture !== null) {
-    vit.needsUpdate = true;
-  }
+  vit.needsUpdate = true;
 
-  orbitAngle += orbitSpeed;
-  orbitingSphere.position.x = Math.cos(orbitAngle) * circleRadius;
-  orbitingSphere.position.z = Math.sin(orbitAngle) * circleRadius;
-  orbitingSphere.position.y = orbitHeight;
+  // Mesh siempre visible
+  if (!scene.children.includes(cloth)) scene.add(cloth);
+  if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
 
-  if (isActive) {
-    if (!scene.children.includes(cloth)) scene.add(cloth);
-    if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
+  // Actualizar distorsión del mesh en AMBOS estados
+  timeUniform.value += 0.01;
+  updateClothGeometry();
+  
+  // Actualizar tiempo en el shader Sobel
+  clothSobelMaterial.uniforms.time.value = timeUniform.value;
 
-    timeUniform.value += 0.01;
-    updateClothGeometry();
-    cloth.rotation.z += 0.01;
-
-    if (messageMesh) {
-      messageMesh.material.opacity = Math.max(messageMesh.material.opacity - 0.05, 0);
-    }
+  if (!isActive) {
+    // Estado pasivo: Shader Sobel + texto visible + SIN ROTACIÓN
+    cloth.material = clothSobelMaterial;
+    // cloth.rotation.z NO se modifica - el mesh se detiene
   } else {
-    if (scene.children.includes(cloth)) scene.remove(cloth);
-    if (scene.children.includes(wireframeCube)) scene.remove(wireframeCube);
-
-    if (messageMesh) {
-      messageMesh.material.opacity = Math.min(messageMesh.material.opacity + 0.05, 1);
-    }
+    // Estado activo: Textura Hydra + texto oculto + CON ROTACIÓN
+    cloth.material = clothMaterial;
+    cloth.rotation.z += 0.005; // Rotación solo en estado activo
   }
 
   controls.update();
   renderer.render(scene, camera);
 }
 
+// --- WebSocket ---
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 let socket = new WebSocket(`${protocol}://${window.location.host}`);
 
-// MODIFICAR el event listener del WebSocket:
 socket.addEventListener("message", (event) => {
   try {
     const data = JSON.parse(event.data);
-
     if (data.type === "activate") {
       lastActiveTime = Date.now();
-
-      // ✅ SONIDO DE ÉXITO
       audioManager.playSuccess();
-
       activateTexture(parseInt(data.index), true);
-
-      const textureIndex = parseInt(data.index);
-      if (textureIndex >= 0 && textureIndex < hydraTextures.length) {
-        hydraTextures[textureIndex]();
-        currentHydraTexture = textureIndex;
-        isActive = true;
-        isWebSocketActivation = true;
-        lastActiveTime = Date.now();
-
-        if (activationTimeout) clearTimeout(activationTimeout);
-        activationTimeout = setTimeout(() => {
-          isActive = false;
-          isWebSocketActivation = false;
-          resetCameraPosition();
-        }, 30000);
-      }
     }
   } catch (e) {
-    // ✅ SONIDO DE ERROR
     audioManager.playError();
     console.error("Error processing WebSocket message:", e);
   }
@@ -636,45 +408,27 @@ socket.addEventListener("close", () => {
   }, 5000);
 });
 
-
+// --- Init ---
 function init() {
-  if (messageMesh) {
-    messageMesh.showNFC(true);
-  }
-
+  initCSSMessageLayer();
+  showMessage(true); // Mostrar texto inicial en estado pasivo
   handleInitialNFC();
-
-    // ✅ INICIALIZAR AUDIO CON CLICKS
   document.addEventListener('click', initAudioOnClick);
-  
-  // También con touch para dispositivos móviles
   document.addEventListener('touchstart', initAudioOnClick);
-
-
   animate();
   resetInactivityTimeout();
-
 }
 
+window.addEventListener('beforeunload', () => {
+  if (phraseTimeout) clearTimeout(phraseTimeout);
+});
+
 document.addEventListener('keydown', (event) => {
-  if (!audioInitialized) {
-    initAudioOnClick();
-  }
-  
-  // Probar sonidos con teclas
-  if (event.key === '1') {
-    audioManager.playSuccess();
-    console.log('Probando sonido de éxito');
-  } else if (event.key === '2') {
-    audioManager.playError(); 
-    console.log('Probando sonido de error');
-  } else if (event.key === '3') {
-    audioManager.startAmbientSound();
-    console.log('Iniciando sonido ambiental');
-  } else if (event.key === '0') {
-    audioManager.stopAmbientSound();
-    console.log('Deteniendo sonido ambiental');
-  }
+  if (!audioInitialized) initAudioOnClick();
+  if (event.key === '1') audioManager.playSuccess();
+  else if (event.key === '2') audioManager.playError();
+  else if (event.key === '3') audioManager.startAmbientSound();
+  else if (event.key === '0') audioManager.stopAmbientSound();
 });
 
 init();
