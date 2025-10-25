@@ -67,7 +67,7 @@ function showMessage(show) {
 // --- Log System ---
 const logOverlay = document.getElementById('log-overlay');
 const logEntries = document.getElementById('log-entries');
-const maxLogEntries = 5;
+const maxLogEntries = 9;
 
 function getImageDataPreview() {
   try {
