@@ -32,10 +32,9 @@ function initCSSMessageLayer() {
 
 function startPhraseAnimation() {
   const phrases = [
-    { static: "ACERCA", dynamic: "El dispositivo NFC" },
-    { static: "ESPERA", dynamic: "Una confirmación" },
-    { static: "PERCIBE", dynamic: "El resultado" },
-    { static: "RETIRA", dynamic: "Con un registro exitoso" }
+    { static: "Acerca", dynamic: "el dispositivo NFC" },
+    { static: "Espera", dynamic: "una confirmación" },
+    { static: "Retira", dynamic: "con un registro exitoso" }
   ];
 
   function updatePhrase() {
@@ -63,6 +62,107 @@ function showMessage(show) {
     cyberpunkMessage.classList.add('hidden');
     showNFC(false);
   }
+}
+
+// --- Log System ---
+const logOverlay = document.getElementById('log-overlay');
+const logEntries = document.getElementById('log-entries');
+const maxLogEntries = 5;
+
+function getImageDataPreview() {
+  try {
+    // Obtener datos reales del canvas de Hydra
+    const canvas = hydraCanvas;
+    const ctx = canvas.getContext('2d');
+    
+    // Crear una imagen reducida para el preview
+    const previewWidth = 40;
+    const previewHeight = 30;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = previewWidth;
+    tempCanvas.height = previewHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Dibujar el canvas de Hydra escalado
+    tempCtx.drawImage(canvas, 0, 0, previewWidth, previewHeight);
+    const imageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
+    const data = imageData.data;
+    
+    let preview = '';
+    let byteCount = 0;
+    const maxBytes = 16; // Limitar la cantidad de datos mostrados
+    
+    // Convertir datos de píxeles a formato hexadecimal compacto
+    for (let i = 0; i < data.length && byteCount < maxBytes; i += 4) {
+      if (byteCount % 4 === 0) preview += '\n    ';
+      const r = data[i].toString(16).padStart(2, '0');
+      const g = data[i + 1].toString(16).padStart(2, '0');
+      const b = data[i + 2].toString(16).padStart(2, '0');
+      preview += `0x${r}${g}${b}, `;
+      byteCount++;
+    }
+    
+    return `// Hydra Canvas Data (${byteCount} bytes)
+const uint32_t frame_data[] = {${preview.slice(0, -2)}\n};`;
+  } catch (error) {
+    console.error('Error getting image data:', error);
+    return `// Error reading canvas data\n// ${error.message}`;
+  }
+}
+
+function getTextureName(index) {
+  const names = [
+    "OSC_BLUE_CYAN",
+    "OSC_GREEN_PURPLE", 
+    "OSC_ORANGE_RED",
+    "VORONOI_RED_BLUE"
+  ];
+  return names[index] || `TEXTURE_${index}`;
+}
+
+function addLogEntry(nfcIndex) {
+  const timestamp = new Date().toLocaleTimeString('es-MX', { 
+    timeZone: 'America/Mexico_City', // Ajusta esta zona horaria
+    hour12: false 
+  });
+  
+  const logEntry = document.createElement('div');
+  logEntry.className = 'log-entry';
+  
+  // Pequeño delay para asegurar que Hydra haya renderizado
+  setTimeout(() => {
+    // Obtener datos reales de la imagen actual
+    const imageDataPreview = getImageDataPreview();
+    
+    logEntry.innerHTML = `
+      <div class="log-timestamp">[${timestamp}]</div>
+      <div class="log-nfc">NFC_INDEX: ${nfcIndex} | TEXTURE: ${getTextureName(nfcIndex)}</div>
+      <div class="log-data">${imageDataPreview}</div>
+    `;
+    
+    logEntries.insertBefore(logEntry, logEntries.firstChild);
+    
+    // Mantener solo los últimos maxLogEntries
+    while (logEntries.children.length > maxLogEntries) {
+      logEntries.removeChild(logEntries.lastChild);
+    }
+    
+    console.log('Log entry added for NFC:', nfcIndex); // Debug
+  }, 100);
+}
+
+function showLog(show) {
+  if (show) {
+    logOverlay.classList.add('active');
+    console.log('Log shown'); // Debug
+  } else {
+    logOverlay.classList.remove('active');
+    console.log('Log hidden'); // Debug
+  }
+}
+
+function clearLog() {
+  logEntries.innerHTML = '';
 }
 
 // --- Hydra Textures ---
@@ -117,11 +217,19 @@ function handleInitialNFC() {
   const params = new URLSearchParams(window.location.search);
   const nfcIndex = parseInt(params.get('nfc'));
   if (!isNaN(nfcIndex) && nfcIndex >= 0 && nfcIndex < hydraTextures.length) {
+    console.log('Initial NFC detected:', nfcIndex); // Debug
     lastActiveTime = Date.now();
     hydraTextures[nfcIndex]();
     currentHydraTexture = nfcIndex;
     isActive = true;
     lastActiveTime = Date.now();
+    
+    // Mostrar log y agregar entrada con delay
+    setTimeout(() => {
+      showLog(true);
+      addLogEntry(nfcIndex);
+    }, 200);
+    
     showMessage(false); // Ocultar texto en estado activo
     notifyServer(nfcIndex);
   }
@@ -137,11 +245,19 @@ function notifyServer(index) {
 
 function activateTexture(index, fromWebSocket = false) {
   if (index >= 0 && index < hydraTextures.length) {
+    console.log('Activating texture:', index); // Debug
     hydraTextures[index]();
     currentHydraTexture = index;
     isActive = true;
     isWebSocketActivation = fromWebSocket;
     lastActiveTime = Date.now();
+    
+    // Mostrar log y agregar entrada con delay
+    setTimeout(() => {
+      showLog(true);
+      addLogEntry(index);
+    }, 200);
+    
     showMessage(false); // Ocultar texto en estado activo
     resetInactivityTimeout();
   } else {
@@ -161,6 +277,7 @@ rightPanel.appendChild(renderer.domElement);
 
 // Hydra setup
 const hydra = new Hydra({ canvas: hydraCanvas, autoLoop: true, detectAudio: false });
+// Inicializar con primera textura pero sin log
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
 
@@ -348,6 +465,7 @@ function resetInactivityTimeout() {
       isActive = false;
       isWebSocketActivation = false;
       showMessage(true); // Mostrar texto en estado pasivo
+      showLog(false);   // Ocultar log en estado pasivo
       resetCameraPosition();
     }
   }, INACTIVITY_DELAY);
@@ -432,7 +550,7 @@ function safeSend(data) {
   }
 }
 
-// Mantener la conexión viva con un “ping” periódico
+// Mantener la conexión viva con un "ping" periódico
 setInterval(() => {
   if (socket && socket.readyState === WebSocket.OPEN) {
     safeSend({ type: "ping" });
@@ -442,11 +560,11 @@ setInterval(() => {
 // Inicializar la conexión
 connectWebSocket();
 
-
 // --- Init ---
 function init() {
   initCSSMessageLayer();
   showMessage(true); // Mostrar texto inicial en estado pasivo
+  showLog(false);   // Ocultar log inicialmente
   handleInitialNFC();
   document.addEventListener('click', initAudioOnClick);
   document.addEventListener('touchstart', initAudioOnClick);
@@ -464,6 +582,12 @@ document.addEventListener('keydown', (event) => {
   else if (event.key === '2') audioManager.playError();
   else if (event.key === '3') audioManager.startAmbientSound();
   else if (event.key === '0') audioManager.stopAmbientSound();
+  
+  // Debug: Simular NFC con teclas 4-7
+  if (event.key >= '4' && event.key <= '7') {
+    const nfcIndex = parseInt(event.key) - 4;
+    activateTexture(nfcIndex);
+  }
 });
 
 init();

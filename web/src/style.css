@@ -166,3 +166,61 @@ html, body {
 #nfc-animation.hidden {
   display: none;
 }
+
+/* Log overlay */
+#log-overlay {
+  position: absolute;
+  top: 20px;
+  left: 25%;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  max-width: 400px;
+  backdrop-filter: blur(2px);
+}
+
+#log-overlay.active {
+  opacity: 1;
+}
+
+.log-entry {
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.log-timestamp {
+  color: rgba(0, 255, 255, 0.8);
+  font-size: 10px;
+}
+
+.log-nfc {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: bold;
+}
+
+.log-data {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: monospace;
+  font-size: 10px;
+  word-break: break-all;
+  margin-top: 5px;
+  line-height: 1.2;
+}
+
+.log-header {
+  color: rgba(0, 255, 255, 0.9);
+  font-size: 14px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+  padding-bottom: 5px;
+}
