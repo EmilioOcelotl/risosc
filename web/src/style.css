@@ -90,11 +90,25 @@ html, body {
   margin-bottom: 80px;
 }
 
-/* Animación NFC */
+/* Animación NFC Mejorada - Círculos pequeños alineados con el lector */
 #nfc-animation {
   position: relative;
-  height: 120px;
-  margin-top: 40px;
+  height: 200px;
+  margin-top: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.nfc-circles {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -45px; /* ← Ajusta este valor para subir/bajar */
 }
 
 .nfc-circle {
@@ -102,7 +116,7 @@ html, body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  border: 3px solid white;
+  border: 2px solid rgba(255, 255, 255, 0.8); /* Borde más delgado */
   border-radius: 50%;
   border-top-color: transparent;
   border-right-color: transparent;
@@ -110,52 +124,127 @@ html, body {
 }
 
 .nfc-circle:nth-child(1) {
-  width: 120px;
-  height: 120px;
+  width: 80px; /* Reducido */
+  height: 80px; /* Reducido */
   animation-delay: 0s;
 }
 
 .nfc-circle:nth-child(2) {
-  width: 90px;
-  height: 90px;
+  width: 60px; /* Reducido */
+  height: 60px; /* Reducido */
   animation-delay: 0.3s;
 }
 
 .nfc-circle:nth-child(3) {
-  width: 60px;
-  height: 60px;
+  width: 40px; /* Reducido */
+  height: 40px; /* Reducido */
   animation-delay: 0.6s;
 }
 
-#nfc-text {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 36px;
-  font-weight: bold;
-  opacity: 1;
-  animation: nfcFade 2s ease-in-out infinite;
+/* Control remoto transparente con lector rojo */
+.nfc-remote {
+  width: 80px;
+  height: 140px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  position: relative;
+  animation: remoteApproach 3s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 15px;
+  margin-top: 10px;
 }
 
+/* Lector NFC rojo en la parte superior del control - ajustado para alinearse con círculos */
+.remote-nfc-reader {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #ff3333, #cc0000);
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
+  /* Posicionado para alinearse verticalmente con los círculos */
+  margin-top: 0;
+}
+
+/* Efecto de luz en el lector rojo */
+.remote-nfc-reader::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: readerScan 2s ease-in-out infinite;
+}
+
+/* Línea de conexión alineada con el centro del lector rojo */
+.connection-line {
+  position: absolute;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  top: 50%;
+  left: 140px;
+  right: 140px;
+  opacity: 0.6;
+  /* Ajuste fino para alinear con el centro del lector rojo */
+  margin-top: -25px; /* Mitad de la altura del lector rojo (50px/2) */
+}
+
+/* Animaciones mejoradas */
 @keyframes nfcPulse {
   0%, 100% {
     transform: translate(-50%, -50%) scale(1);
-    opacity: 0.7;
+    opacity: 0.6;
+    border-color: rgba(255, 255, 255, 0.6);
   }
   50% {
     transform: translate(-50%, -50%) scale(1.1);
     opacity: 1;
+    border-color: rgba(255, 255, 255, 0.9);
   }
 }
 
-@keyframes nfcFade {
+@keyframes remoteApproach {
   0%, 100% {
-    opacity: 0.7;
+    transform: translateX(0) rotate(-3deg);
+  }
+  25% {
+    transform: translateX(-15px) rotate(-2deg);
   }
   50% {
-    opacity: 1;
+    transform: translateX(-50px) rotate(0deg);
   }
+  75% {
+    transform: translateX(-15px) rotate(2deg);
+  }
+}
+
+@keyframes readerScan {
+  0%, 100% {
+    left: -100%;
+  }
+  50% {
+    left: 150%;
+  }
+}
+
+/* Texto NFC centrado */
+#nfc-text {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: bold;
+  opacity: 0.8;
+  white-space: nowrap;
 }
 
 /* Estados para mostrar/ocultar mensajes */

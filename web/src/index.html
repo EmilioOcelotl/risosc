@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RisOSC</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
     <canvas id="hydra-canvas" width="800" height="600"></canvas>
@@ -20,11 +22,25 @@
                     <span id="static-text">ACERCA TU</span>
                     <span id="dynamic-text">TARJETA NFC</span>
                 </div>
+
+                <!-- Nueva animación NFC mejorada -->
                 <div id="nfc-animation">
-                    <div class="nfc-circle"></div>
-                    <div class="nfc-circle"></div>
-                    <div class="nfc-circle"></div>
-                    <span id="nfc-text">NFC</span>
+                    <!-- Control remoto transparente con lector rojo -->
+                    <div class="nfc-remote">
+                        <div class="remote-nfc-reader"></div>
+
+                    </div>
+
+                    <!-- Línea de conexión más corta -->
+                    <div class="connection-line"></div>
+
+                    <!-- Círculos concéntricos (etiqueta NFC) -->
+                    <div class="nfc-circles">
+                        <div class="nfc-circle"></div>
+                        <div class="nfc-circle"></div>
+                        <div class="nfc-circle"></div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -33,8 +49,9 @@
     <div id="log-overlay">
         <div class="log-header">SYSTEM LOG</div>
         <div id="log-entries"></div>
-      </div>
-    
+    </div>
+
     <script type="module" src="main.js"></script>
 </body>
+
 </html>

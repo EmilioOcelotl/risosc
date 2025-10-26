@@ -32,9 +32,22 @@ function initCSSMessageLayer() {
 
 function startPhraseAnimation() {
   const phrases = [
-    { static: "Acerca", dynamic: "el dispositivo NFC" },
-    { static: "Espera", dynamic: "una confirmación" },
-    { static: "Retira", dynamic: "con un registro exitoso" }
+    { 
+      static: "Comienza", 
+      dynamic: "identificando la zona de lectura (roja) en el dispositivo" 
+    },
+    { 
+      static: "Interactúa", 
+      dynamic: "acercando la tarjeta, es parecido a un pago sin contacto" 
+    },
+    { 
+      static: "Confirma", 
+      dynamic: "la conexión con un sonido y el cambio en pantalla" 
+    },
+    { 
+      static: "Descubre", 
+      dynamic: "tu registro único de la interacción en la pantalla" 
+    }
   ];
 
   function updatePhrase() {
@@ -43,7 +56,7 @@ function startPhraseAnimation() {
     document.getElementById('dynamic-text').textContent = phrase.dynamic;
 
     currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
-    phraseTimeout = setTimeout(updatePhrase, 4000);
+    phraseTimeout = setTimeout(updatePhrase, 6000);
   }
 
   updatePhrase();
@@ -67,7 +80,7 @@ function showMessage(show) {
 // --- Log System ---
 const logOverlay = document.getElementById('log-overlay');
 const logEntries = document.getElementById('log-entries');
-const maxLogEntries = 9;
+const maxLogEntries = 5;
 
 function getImageDataPreview() {
   try {
