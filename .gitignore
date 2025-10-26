@@ -1,5 +1,7 @@
 **/node_modules/
 
+nfc_snapshots.db
+
 **/.parcel-cache/
 **/.cache/
 

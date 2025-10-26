@@ -6,6 +6,7 @@
   font-display: block;
 }
 
+/* RESET Y BASE */
 * {
   margin: 0;
   padding: 0;
@@ -39,7 +40,7 @@ html, body {
   display: none;
 }
 
-/* Capa de mensajes superpuesta */
+/* CAPA DE MENSAJES PRINCIPAL */
 #message-overlay {
   position: absolute;
   top: 0;
@@ -90,7 +91,7 @@ html, body {
   margin-bottom: 80px;
 }
 
-/* Animación NFC Mejorada - Círculos pequeños alineados con el lector */
+/* ANIMACIÓN NFC */
 #nfc-animation {
   position: relative;
   height: 200px;
@@ -108,7 +109,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-top: -45px; /* ← Ajusta este valor para subir/bajar */
+  margin-top: -45px;
 }
 
 .nfc-circle {
@@ -116,7 +117,7 @@ html, body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  border: 2px solid rgba(255, 255, 255, 0.8); /* Borde más delgado */
+  border: 2px solid rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   border-top-color: transparent;
   border-right-color: transparent;
@@ -124,24 +125,24 @@ html, body {
 }
 
 .nfc-circle:nth-child(1) {
-  width: 80px; /* Reducido */
-  height: 80px; /* Reducido */
+  width: 80px;
+  height: 80px;
   animation-delay: 0s;
 }
 
 .nfc-circle:nth-child(2) {
-  width: 60px; /* Reducido */
-  height: 60px; /* Reducido */
+  width: 60px;
+  height: 60px;
   animation-delay: 0.3s;
 }
 
 .nfc-circle:nth-child(3) {
-  width: 40px; /* Reducido */
-  height: 40px; /* Reducido */
+  width: 40px;
+  height: 40px;
   animation-delay: 0.6s;
 }
 
-/* Control remoto transparente con lector rojo */
+/* CONTROL REMOTO NFC */
 .nfc-remote {
   width: 80px;
   height: 140px;
@@ -159,7 +160,6 @@ html, body {
   margin-top: 10px;
 }
 
-/* Lector NFC rojo en la parte superior del control - ajustado para alinearse con círculos */
 .remote-nfc-reader {
   width: 50px;
   height: 50px;
@@ -168,11 +168,9 @@ html, body {
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.6);
   position: relative;
   overflow: hidden;
-  /* Posicionado para alinearse verticalmente con los círculos */
   margin-top: 0;
 }
 
-/* Efecto de luz en el lector rojo */
 .remote-nfc-reader::after {
   content: '';
   position: absolute;
@@ -184,7 +182,6 @@ html, body {
   animation: readerScan 2s ease-in-out infinite;
 }
 
-/* Línea de conexión alineada con el centro del lector rojo */
 .connection-line {
   position: absolute;
   height: 2px;
@@ -193,11 +190,21 @@ html, body {
   left: 140px;
   right: 140px;
   opacity: 0.6;
-  /* Ajuste fino para alinear con el centro del lector rojo */
-  margin-top: -25px; /* Mitad de la altura del lector rojo (50px/2) */
+  margin-top: -25px;
 }
 
-/* Animaciones mejoradas */
+#nfc-text {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: bold;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+/* ANIMACIONES */
 @keyframes nfcPulse {
   0%, 100% {
     transform: translate(-50%, -50%) scale(1);
@@ -235,19 +242,7 @@ html, body {
   }
 }
 
-/* Texto NFC centrado */
-#nfc-text {
-  position: absolute;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 24px;
-  font-weight: bold;
-  opacity: 0.8;
-  white-space: nowrap;
-}
-
-/* Estados para mostrar/ocultar mensajes */
+/* ESTADOS VISIBILIDAD */
 #cyberpunk-message.hidden {
   opacity: 0;
 }
@@ -256,25 +251,28 @@ html, body {
   display: none;
 }
 
-/* Log overlay */
+/* SYSTEM LOG OVERLAY - AJUSTADO */
 #log-overlay {
   position: absolute;
   top: 5%;
   left: 20%;
-  color: rgba(255, 255, 255, 0.7);
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Courier New', monospace; /* 👈 Más estilo terminal */
+  font-size: 11px;
   line-height: 1.4;
   pointer-events: none;
   z-index: 20;
   opacity: 0;
   transition: opacity 0.5s ease;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   padding: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  max-width: 400px;
-  backdrop-filter: blur(2px);
+  border: 1px solid rgba(0, 255, 255, 0.3); /* 👈 Borde cian terminal */
+  border-radius: 2px;
+  width: 380px; /* 👈 Un poco más ancho */
+  max-height: 440px; /* 👈 Más alto para 5 entradas */
+  overflow: hidden;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1); /* 👈 Glow terminal */
 }
 
 #log-overlay.active {
@@ -282,34 +280,86 @@ html, body {
 }
 
 .log-entry {
-  margin-bottom: 8px;
+  margin-bottom: 32px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  height: 36px; /* 👈 Más alto para más contenido */
+  overflow: visible; /* 👈 Que no corte el texto */
 }
 
 .log-timestamp {
-  color: rgba(0, 255, 255, 0.8);
-  font-size: 10px;
-}
-
-.log-nfc {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(0, 255, 255, 0.9); /* 👈 Más brillante */
+  font-size: 9px;
+  line-height: 1.2;
   font-weight: bold;
 }
 
-.log-data {
-  color: rgba(255, 255, 255, 0.6);
-  font-family: monospace;
+.log-nfc {
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: bold;
   font-size: 10px;
-  word-break: break-all;
-  margin-top: 5px;
+  line-height: 1.2;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+
+.log-snapshot-info {
+  font-size: 9px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 3px 0;
   line-height: 1.2;
 }
 
-.log-header {
-  color: rgba(0, 255, 255, 0.9);
-  font-size: 14px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(0, 255, 255, 0.3);
-  padding-bottom: 5px;
+.data-size {
+  background: rgba(0, 255, 255, 0.2); /* 👈 Fondo cian */
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #0ff; /* 👈 Cian brillante */
+  font-size: 8px;
+  font-weight: bold;
+  border: 1px solid rgba(0, 255, 255, 0.4);
+}
+
+.data-preview {
+  color: rgba(200, 200, 200, 0.9); /* 👈 Más visible */
+  font-size: 9px;
+  flex-grow: 1;
+  margin-left: 10px;
+  word-break: break-all;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.5px;
+}
+
+/* SNAPSHOT PREVIEW */
+#snapshot-preview {
+  position: absolute;
+  padding: 4px; 
+  top: auto;
+  bottom: 5%;
+  right: 20%;
+  left: auto; 
+  width: 300px;
+  height: 300px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+}
+
+#snapshot-preview.active {
+  opacity: 1;
+}
+
+#snapshot-preview canvas {
+  width: 240px;
+  height: 240px;
+  image-rendering: pixelated;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }

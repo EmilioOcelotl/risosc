@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Hydra from 'hydra-synth';
 import AudioManager from './audio/AudioManager.js';
+import SnapshotCompressor from './compressor/snapshotCompressor.js';
 
 const audioManager = new AudioManager();
 let audioInitialized = false;
@@ -22,6 +23,7 @@ const hydraCanvas = document.getElementById("hydra-canvas");
 let messageOverlay, nfcAnimation, cyberpunkMessage;
 let currentPhraseIndex = 0;
 let phraseTimeout;
+let snapshotPreviewTimeout = null;
 
 function initCSSMessageLayer() {
   messageOverlay = document.getElementById('message-overlay');
@@ -135,33 +137,103 @@ function getTextureName(index) {
 
 function addLogEntry(nfcIndex) {
   const timestamp = new Date().toLocaleTimeString('es-MX', { 
-    timeZone: 'America/Mexico_City', // Ajusta esta zona horaria
+    timeZone: 'America/Mexico_City',
     hour12: false 
   });
   
-  const logEntry = document.createElement('div');
-  logEntry.className = 'log-entry';
-  
-  // Pequeño delay para asegurar que Hydra haya renderizado
   setTimeout(() => {
-    // Obtener datos reales de la imagen actual
-    const imageDataPreview = getImageDataPreview();
+    const compressor = new SnapshotCompressor();
+    const compressedHex = compressor.captureHydraFrame(hydraCanvas);
     
+    // Crear nueva entrada
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
     logEntry.innerHTML = `
       <div class="log-timestamp">[${timestamp}]</div>
-      <div class="log-nfc">NFC_INDEX: ${nfcIndex} | TEXTURE: ${getTextureName(nfcIndex)}</div>
-      <div class="log-data">${imageDataPreview}</div>
+      <div class="log-nfc">NFC_${nfcIndex} | ${getTextureName(nfcIndex)}</div>
+      <div class="log-snapshot-info">
+        <span class="data-size">${compressedHex.length / 2}B</span>
+        <span class="data-preview">${compressedHex.substring(0, 160)}...</span>
+      </div>
     `;
     
-    logEntries.insertBefore(logEntry, logEntries.firstChild);
+    // ENCOLAR: Agregar al final (en lugar del principio)
+    logEntries.appendChild(logEntry);
     
-    // Mantener solo los últimos maxLogEntries
+    // MANTENER SOLO 5 ELEMENTOS
     while (logEntries.children.length > maxLogEntries) {
-      logEntries.removeChild(logEntries.lastChild);
+      logEntries.removeChild(logEntries.firstChild); // 👈 Eliminar el MÁS VIEJO
     }
     
-    console.log('Log entry added for NFC:', nfcIndex); // Debug
+    // Mostrar preview
+    showSnapshotPreview(compressedHex);
+    
+    // Guardar en BD
+    saveNFCEventToDatabase(nfcIndex, compressedHex);
+    
   }, 100);
+}
+
+function showSnapshotPreview(hexData) {
+  const previewContainer = document.getElementById('snapshot-preview');
+  const compressor = new SnapshotCompressor();
+  
+  // Limpiar timeout anterior
+  if (snapshotPreviewTimeout) {
+    clearTimeout(snapshotPreviewTimeout);
+    snapshotPreviewTimeout = null;
+  }
+  
+  // Limpiar preview anterior
+  previewContainer.innerHTML = '';
+  
+  // Crear canvas cuadrado (80x80)
+  const canvas = document.createElement('canvas');
+  canvas.width = 80;
+  canvas.height = 80;
+  canvas.style.imageRendering = 'pixelated';
+  
+  // Reconstruir imagen y escalar a cuadrado
+  const bytes = compressor.hexToBytes(hexData);
+  const pixelData = compressor.decompress2bpp(bytes);
+  const imageData = compressor.ditheredToImageData(pixelData);
+  
+  const ctx = canvas.getContext('2d');
+  
+  // Dibujar recortando a cuadrado (centro de la imagen 80x160)
+  const tempCanvas = document.createElement('canvas');
+  tempCanvas.width = 80;
+  tempCanvas.height = 160;
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCtx.putImageData(imageData, 0, 0);
+  
+  // Recortar parte central para hacerla cuadrada
+  ctx.drawImage(tempCanvas, 0, 40, 80, 80, 0, 0, 80, 80);
+  
+  previewContainer.appendChild(canvas);
+  previewContainer.classList.add('active');
+  
+  // Programar ocultamiento con la misma lógica de inactividad
+  snapshotPreviewTimeout = setTimeout(() => {
+    previewContainer.classList.remove('active');
+  }, INACTIVITY_DELAY);
+}
+
+async function saveNFCEventToDatabase(nfcIndex, compressedHex) {
+  try {
+    await fetch('/api/nfc-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        timestamp: new Date().toISOString(),
+        nfc_index: nfcIndex,
+        texture_name: getTextureName(nfcIndex),
+        snapshot_data: compressedHex
+      })
+    });
+  } catch (error) {
+    console.error('Error guardando en BD:', error);
+  }
 }
 
 function showLog(show) {
@@ -469,7 +541,7 @@ function updateClothGeometry() {
 
 // --- Inactivity / Demo ---
 let inactivityTimeout = null;
-const INACTIVITY_DELAY = 30000;
+const INACTIVITY_DELAY = 60000;
 
 function resetInactivityTimeout() {
   if (inactivityTimeout) clearTimeout(inactivityTimeout);
@@ -477,9 +549,16 @@ function resetInactivityTimeout() {
     if (Date.now() - lastActiveTime >= INACTIVITY_DELAY) {
       isActive = false;
       isWebSocketActivation = false;
-      showMessage(true); // Mostrar texto en estado pasivo
-      showLog(false);   // Ocultar log en estado pasivo
+      showMessage(true);
+      showLog(false);
       resetCameraPosition();
+      
+      const previewContainer = document.getElementById('snapshot-preview');
+      previewContainer.classList.remove('active');
+      if (snapshotPreviewTimeout) {
+        clearTimeout(snapshotPreviewTimeout);
+        snapshotPreviewTimeout = null;
+      }
     }
   }, INACTIVITY_DELAY);
 }

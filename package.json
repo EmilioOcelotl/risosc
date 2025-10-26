@@ -3,23 +3,23 @@
     "version": "1.0.0",
     "description": "Proyecto RisOSC: front-end con Three + Hydra y backend con Express + WebSocket",
     "scripts": {
-      "dev": "parcel ./web/src/index.html",
-      "build": "parcel build ./web/src/index.html --public-url ./ && npm run copy-viewers",
-      "copy-viewers": "cpx \"web/src/viewer.*\" dist/",
-      "start": "node server/app.js"
+        "dev": "parcel ./web/src/index.html",
+        "build": "parcel build ./web/src/index.html --public-url ./ && npm run copy-viewers",
+        "copy-viewers": "cpx \"web/src/viewer.*\" dist/",
+        "start": "node server/app.js"
     },
     "author": "Emilio Ocelotl",
     "license": "ISC",
     "dependencies": {
-      "express": "^5.1.0",
-      "ws": "^8.18.2",
-      "three": "0.132.2",
-      "hydra-synth": "^1.4.0"
+        "express": "^5.1.0",
+        "hydra-synth": "^1.4.0",
+        "sqlite3": "^5.1.7",
+        "three": "0.132.2",
+        "ws": "^8.18.2"
     },
     "devDependencies": {
-      "parcel": "^2.15.2",
-      "events": "^3.3.0",
-      "cpx": "^1.5.0"
+        "cpx": "^1.5.0",
+        "events": "^3.3.0",
+        "parcel": "^2.15.2"
     }
-  }
-  
+}
