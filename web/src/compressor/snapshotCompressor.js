@@ -1,6 +1,6 @@
 // snapshotCompressor.js
 export default class SnapshotCompressor {
-    constructor(displayWidth = 80, displayHeight = 160) {
+    constructor(displayWidth = 80, displayHeight = 80) {
         this.targetWidth = displayWidth;
         this.targetHeight = displayHeight;
         this.ditherMatrix = [
@@ -22,6 +22,51 @@ export default class SnapshotCompressor {
             console.error('Error capturando snapshot:', error);
             return '';
         }
+    }
+
+    // 👇 NUEVO MÉTODO PARA EXTRAER PALETA RISO
+    extractRisoPalette(hydraCanvas) {
+        try {
+            const imageData = this.prepareImage(hydraCanvas, hydraCanvas.width, hydraCanvas.height);
+            const data = imageData.data;
+            const colorMap = {};
+            
+            // Muestrear colores dominantes
+            for (let i = 0; i < data.length; i += 16) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+                
+                // Cuantizar a paleta reducida para agrupar similares
+                const quantized = this.quantizeColor(r, g, b);
+                const key = `${quantized.r},${quantized.g},${quantized.b}`;
+                
+                colorMap[key] = (colorMap[key] || 0) + 1;
+            }
+            
+            // Ordenar por frecuencia y tomar los 4 más comunes
+            const dominantColors = Object.entries(colorMap)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 4)
+                .map(([color]) => {
+                    const [r, g, b] = color.split(',').map(Number);
+                    return { r, g, b };
+                });
+            
+            return dominantColors;
+        } catch (error) {
+            console.error('Error extrayendo paleta RISO:', error);
+            return [];
+        }
+    }
+
+    quantizeColor(r, g, b) {
+        // Reducir a 4 niveles por canal (para riso)
+        return {
+            r: Math.floor(r / 64) * 64,
+            g: Math.floor(g / 64) * 64,
+            b: Math.floor(b / 64) * 64
+        };
     }
 
     prepareImage(imageData, width, height) {
@@ -108,29 +153,6 @@ export default class SnapshotCompressor {
             bytes.push(parseInt(hexString.substr(i, 2), 16));
         }
         return bytes;
-    }
-
-    // Método opcional para debug - ver cómo se ve la compresión
-    debugPreview(hexData, containerElement) {
-        const bytes = this.hexToBytes(hexData);
-        const pixelData = this.decompress2bpp(bytes);
-        const imageData = this.ditheredToImageData(pixelData);
-        
-        const canvas = document.createElement('canvas');
-        canvas.width = this.targetWidth;
-        canvas.height = this.targetHeight;
-        canvas.style.imageRendering = 'pixelated';
-        canvas.style.width = '160px';
-        canvas.style.height = '320px';
-        canvas.style.border = '1px solid #333';
-        
-        const ctx = canvas.getContext('2d');
-        ctx.putImageData(imageData, 0, 0);
-        
-        if (containerElement) {
-            containerElement.appendChild(canvas);
-        }
-        return canvas;
     }
 
     decompress2bpp(compressedBytes) {

@@ -193,22 +193,15 @@ function showSnapshotPreview(hexData) {
   canvas.height = 80;
   canvas.style.imageRendering = 'pixelated';
   
-  // Reconstruir imagen y escalar a cuadrado
+  // Reconstruir imagen - AHORA ES DIRECTA 80x80
   const bytes = compressor.hexToBytes(hexData);
   const pixelData = compressor.decompress2bpp(bytes);
   const imageData = compressor.ditheredToImageData(pixelData);
   
   const ctx = canvas.getContext('2d');
   
-  // Dibujar recortando a cuadrado (centro de la imagen 80x160)
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = 80;
-  tempCanvas.height = 160;
-  const tempCtx = tempCanvas.getContext('2d');
-  tempCtx.putImageData(imageData, 0, 0);
-  
-  // Recortar parte central para hacerla cuadrada
-  ctx.drawImage(tempCanvas, 0, 40, 80, 80, 0, 0, 80, 80);
+  // 👈 DIBUJO DIRECTO - SIN RECORTES
+  ctx.putImageData(imageData, 0, 0);
   
   previewContainer.appendChild(canvas);
   previewContainer.classList.add('active');
