@@ -70,12 +70,16 @@ function showNFC(show) {
 }
 
 function showMessage(show) {
+  const artDescription = document.getElementById('art-description');
+  
   if (show) {
     cyberpunkMessage.classList.remove('hidden');
     showNFC(true);
+    artDescription.classList.add('hidden'); // 👈 Ocultar en estado pasivo
   } else {
     cyberpunkMessage.classList.add('hidden');
     showNFC(false);
+    artDescription.classList.remove('hidden'); // 👈 Mostrar en estado activo
   }
 }
 

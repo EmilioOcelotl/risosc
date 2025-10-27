@@ -251,14 +251,47 @@ html, body {
   display: none;
 }
 
-/* SYSTEM LOG OVERLAY - AJUSTADO */
-#log-overlay {
+/* EXPLICACIÓN DE LA OBRA - ESQUINA SUPERIOR DERECHA */
+#art-description {
   position: absolute;
   top: 5%;
   left: 20%;
   color: rgba(255, 255, 255, 0.8);
-  font-family: 'Courier New', monospace; /* 👈 Más estilo terminal */
-  font-size: 11px;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 20px;
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  border-radius: 2px;
+  width: 380px;
+  max-height: 440px;
+  overflow-y: auto;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+}
+
+#art-description p {
+  margin-bottom: 15px;
+  text-align: justify;
+}
+
+#art-description p:last-child {
+  margin-bottom: 0;
+  font-style: italic;
+  color: rgba(0, 255, 255, 0.8);
+}
+
+/* SYSTEM LOG OVERLAY - AJUSTADO */
+#log-overlay {
+  position: absolute;
+  top: 5%;
+  right: 20%;
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
   line-height: 1.4;
   pointer-events: none;
   z-index: 20;
@@ -266,13 +299,13 @@ html, body {
   transition: opacity 0.5s ease;
   background: rgba(0, 0, 0, 0.4);
   padding: 15px;
-  border: 1px solid rgba(0, 255, 255, 0.3); /* 👈 Borde cian terminal */
+  border: 1px solid rgba(0, 255, 255, 0.3);
   border-radius: 2px;
-  width: 380px; /* 👈 Un poco más ancho */
-  max-height: 440px; /* 👈 Más alto para 5 entradas */
+  width: 380px;
+  max-height: 520px;
   overflow: hidden;
   backdrop-filter: blur(3px);
-  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1); /* 👈 Glow terminal */
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
 }
 
 #log-overlay.active {
@@ -280,15 +313,15 @@ html, body {
 }
 
 .log-entry {
-  margin-bottom: 32px;
+  margin-bottom: 48px;
   padding-bottom: 8px;
-  height: 36px; /* 👈 Más alto para más contenido */
-  overflow: visible; /* 👈 Que no corte el texto */
+  height: 36px;
+  overflow: visible;
 }
 
 .log-timestamp {
-  color: rgba(0, 255, 255, 0.9); /* 👈 Más brillante */
-  font-size: 9px;
+  color: rgba(0, 255, 255, 0.9);
+  font-size: 11px;
   line-height: 1.2;
   font-weight: bold;
 }
@@ -296,13 +329,13 @@ html, body {
 .log-nfc {
   color: rgba(255, 255, 255, 0.95);
   font-weight: bold;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.2;
   text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
 }
 
 .log-snapshot-info {
-  font-size: 9px;
+  font-size: 11px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -311,18 +344,18 @@ html, body {
 }
 
 .data-size {
-  background: rgba(0, 255, 255, 0.2); /* 👈 Fondo cian */
+  background: rgba(0, 255, 255, 0.2);
   padding: 2px 6px;
   border-radius: 3px;
-  color: #0ff; /* 👈 Cian brillante */
-  font-size: 8px;
+  color: #0ff;
+  font-size: 10px;
   font-weight: bold;
   border: 1px solid rgba(0, 255, 255, 0.4);
 }
 
 .data-preview {
-  color: rgba(200, 200, 200, 0.9); /* 👈 Más visible */
-  font-size: 9px;
+  color: rgba(200, 200, 200, 0.9);
+  font-size: 11px;
   flex-grow: 1;
   margin-left: 10px;
   word-break: break-all;
@@ -362,4 +395,8 @@ html, body {
   height: 240px;
   image-rendering: pixelated;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#art-description.hidden {
+  display: none;
 }
