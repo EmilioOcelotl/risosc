@@ -43,6 +43,10 @@ function startPhraseAnimation() {
       dynamic: "el dispositivo, es parecido a un pago sin contacto" 
     },
     { 
+      static: "Comprueba", 
+      dynamic: "el módulo rojo debe estar en paralelo a la etiqueta" 
+    },
+    { 
       static: "Escucha", 
       dynamic: "una confirmación, la pantalla deberá cambiar" 
     },
@@ -56,6 +60,9 @@ function startPhraseAnimation() {
     const phrase = phrases[currentPhraseIndex];
     document.getElementById('static-text').textContent = phrase.static;
     document.getElementById('dynamic-text').textContent = phrase.dynamic;
+
+    // 🔊 TRANSICIÓN ENTRE FRASES
+    audioManager.playTransition("reveal");
 
     currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
     phraseTimeout = setTimeout(updatePhrase, 6000);
@@ -161,18 +168,16 @@ function addLogEntry(nfcIndex) {
       </div>
     `;
     
-    // ENCOLAR: Agregar al final (en lugar del principio)
     logEntries.appendChild(logEntry);
     
-    // MANTENER SOLO 5 ELEMENTOS
     while (logEntries.children.length > maxLogEntries) {
-      logEntries.removeChild(logEntries.firstChild); // 👈 Eliminar el MÁS VIEJO
+      logEntries.removeChild(logEntries.firstChild);
     }
     
-    // Mostrar preview
-    showSnapshotPreview(compressedHex);
+    // 🔊 DETENER SONIDO DE PROCESAMIENTO AL COMPLETAR
+    audioManager.stopProcessing();
     
-    // Guardar en BD
+    showSnapshotPreview(compressedHex);
     saveNFCEventToDatabase(nfcIndex, compressedHex);
     
   }, 100);
@@ -325,14 +330,22 @@ function notifyServer(index) {
   }).catch(e => console.error('Error notifying server:', e));
 }
 
+// En la función activateTexture:
 function activateTexture(index, fromWebSocket = false) {
   if (index >= 0 && index < hydraTextures.length) {
-    console.log('Activating texture:', index); // Debug
+    console.log('Activating texture:', index);
+    
+    // 🔊 SONIDO DE ÉXITO
+    audioManager.playSuccess();
+    
     hydraTextures[index]();
     currentHydraTexture = index;
     isActive = true;
     isWebSocketActivation = fromWebSocket;
     lastActiveTime = Date.now();
+    
+    // 🔊 INICIAR SONIDO DE PROCESAMIENTO
+    audioManager.startProcessing();
     
     // Mostrar log y agregar entrada con delay
     setTimeout(() => {
@@ -340,9 +353,10 @@ function activateTexture(index, fromWebSocket = false) {
       addLogEntry(index);
     }, 200);
     
-    showMessage(false); // Ocultar texto en estado activo
+    showMessage(false);
     resetInactivityTimeout();
   } else {
+    // 🔊 SONIDO DE ERROR
     audioManager.playError();
     console.log('Índice NFC inválido:', index);
   }
@@ -608,7 +622,7 @@ function connectWebSocket() {
       const data = JSON.parse(event.data);
       if (data.type === "activate") {
         lastActiveTime = Date.now();
-        audioManager.playSuccess();
+        // 🔊 El sonido de éxito ahora se reproduce en activateTexture()
         activateTexture(parseInt(data.index), true);
       } else if (data.type === "ping") {
         socket.send(JSON.stringify({ type: "pong" }));
@@ -652,13 +666,20 @@ connectWebSocket();
 // --- Init ---
 function init() {
   initCSSMessageLayer();
-  showMessage(true); // Mostrar texto inicial en estado pasivo
-  showLog(false);   // Ocultar log inicialmente
+  showMessage(true);
+  showLog(false);
   handleInitialNFC();
   document.addEventListener('click', initAudioOnClick);
   document.addEventListener('touchstart', initAudioOnClick);
   animate();
   resetInactivityTimeout();
+  
+  // 🔊 TEXTURAS ATMOSFÉRICAS CADA 20-30 SEGUNDOS
+  setInterval(() => {
+    if (audioInitialized && !isActive) { // Solo en estado pasivo
+      audioManager.playAtmosphericTexture();
+    }
+  }, 20000 + Math.random() * 10000);
 }
 
 window.addEventListener('beforeunload', () => {
@@ -667,16 +688,25 @@ window.addEventListener('beforeunload', () => {
 
 document.addEventListener('keydown', (event) => {
   if (!audioInitialized) initAudioOnClick();
+  
+  // Debug de sonidos
   if (event.key === '1') audioManager.playSuccess();
   else if (event.key === '2') audioManager.playError();
   else if (event.key === '3') audioManager.startAmbientSound();
   else if (event.key === '0') audioManager.stopAmbientSound();
+  else if (event.key === 't') audioManager.playTransition("reveal"); // Nueva tecla para transiciones
+  else if (event.key === 'a') audioManager.playAtmosphericTexture(); // Nueva tecla para texturas
   
   // Debug: Simular NFC con teclas 4-7
   if (event.key >= '4' && event.key <= '7') {
     const nfcIndex = parseInt(event.key) - 4;
     activateTexture(nfcIndex);
   }
+});
+
+window.addEventListener('beforeunload', () => {
+  if (phraseTimeout) clearTimeout(phraseTimeout);
+  audioManager.cleanup(); // 🔊 LIMPIAR AUDIO
 });
 
 init();
