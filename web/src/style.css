@@ -59,6 +59,10 @@ html, body {
   color: white;
   opacity: 1;
   transition: opacity 0.3s ease;
+  width: 90%;
+  max-width: 900px;
+  padding: 40px 20px;
+  /* Eliminado el fondo del contenedor principal */
 }
 
 #main-title {
@@ -66,6 +70,12 @@ html, body {
   font-weight: bold;
   margin-bottom: 20px;
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  padding: 40px 40px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  display: inline-block;
 }
 
 #subtitle {
@@ -73,12 +83,24 @@ html, body {
   font-style: italic;
   margin-bottom: 60px;
   opacity: 0.8;
+  padding: 15px 30px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  display: inline-block;
 }
 
 #instructions {
   font-size: 48px;
   font-weight: bold;
   margin-bottom: 20px;
+  padding: 40px 40px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  display: inline-block;
 }
 
 #static-text, #dynamic-text {
@@ -89,6 +111,12 @@ html, body {
   font-size: 28px;
   opacity: 0.7;
   margin-bottom: 80px;
+  padding: 15px 30px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  display: inline-block;
 }
 
 /* ANIMACIÓN NFC */
@@ -202,6 +230,12 @@ html, body {
   font-weight: bold;
   opacity: 0.8;
   white-space: nowrap;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  display: inline-block;
 }
 
 /* ANIMACIONES */
@@ -265,7 +299,7 @@ html, body {
   background: rgba(0, 0, 0, 0.4);
   padding: 20px;
   border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 2px;
+  border-radius: 12px;
   width: 380px;
   max-height: 440px;
   overflow-y: auto;
@@ -300,7 +334,7 @@ html, body {
   background: rgba(0, 0, 0, 0.4);
   padding: 15px;
   border: 1px solid rgba(0, 255, 255, 0.3);
-  border-radius: 2px;
+  border-radius: 12px;
   width: 380px;
   max-height: 520px;
   overflow: hidden;
@@ -384,6 +418,7 @@ html, body {
   opacity: 0;
   transition: opacity 0.5s ease;
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+  border-radius: 12px;
 }
 
 #snapshot-preview.active {
@@ -395,6 +430,7 @@ html, body {
   height: 240px;
   image-rendering: pixelated;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
 }
 
 #art-description.hidden {

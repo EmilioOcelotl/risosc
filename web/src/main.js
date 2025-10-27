@@ -39,16 +39,16 @@ function startPhraseAnimation() {
       dynamic: "identificando la zona de lectura (roja) en el dispositivo" 
     },
     { 
-      static: "Interactúa", 
-      dynamic: "acercando la tarjeta, es parecido a un pago sin contacto" 
+      static: "Acerca", 
+      dynamic: "el dispositivo, es parecido a un pago sin contacto" 
     },
     { 
-      static: "Confirma", 
-      dynamic: "la conexión con un sonido y el cambio en pantalla" 
+      static: "Escucha", 
+      dynamic: "una confirmación, la pantalla deberá cambiar" 
     },
     { 
       static: "Descubre", 
-      dynamic: "tu registro único de la interacción en la pantalla" 
+      dynamic: "tu registro único de la interacción en pantalla" 
     }
   ];
 
