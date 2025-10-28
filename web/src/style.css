@@ -97,6 +97,7 @@ html, body {
   margin: 45px auto; /* Mantienes el centrado */
   width: 1400px; /* Ahora este valor SÍ funcionará */
   max-width: 95%; /* Para que no se salga en pantallas pequeñas */
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
   padding: 55px;
   background: rgba(0, 0, 0, 0.4);
   border-radius: 15px;
