@@ -26,7 +26,7 @@ html, body {
 }
 
 #right-panel {
-  width: 1080px;
+  width: 1400px;
   height: 1080px;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
@@ -60,7 +60,7 @@ html, body {
   opacity: 1;
   transition: opacity 0.3s ease;
   width: 90%;
-  max-width: 900px;
+  max-width: 1600px;
   padding: 40px 20px;
   /* Eliminado el fondo del contenedor principal */
 }
@@ -94,13 +94,16 @@ html, body {
 #instructions {
   font-size: 48px;
   font-weight: bold;
-  margin-bottom: 20px;
-  padding: 40px 40px;
+  margin: 45px auto; /* Mantienes el centrado */
+  width: 1400px; /* Ahora este valor SÍ funcionará */
+  max-width: 95%; /* Para que no se salga en pantallas pequeñas */
+  padding: 125px;
   background: rgba(0, 0, 0, 0.4);
   border-radius: 15px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(5px);
-  display: inline-block;
+  display: block;
+  text-align: center;
 }
 
 #static-text, #dynamic-text {
