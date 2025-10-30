@@ -40,11 +40,15 @@ function startPhraseAnimation() {
     },
     { 
       static: "Acerca", 
-      dynamic: "el dispositivo, es parecido a un pago sin contacto" 
+      dynamic: "el dispositivo a la etiqueta blanca de los cuadros" 
     },
     { 
       static: "Comprueba", 
       dynamic: "el módulo rojo debe estar en paralelo a la etiqueta" 
+    },
+    { 
+      static: "Espera", 
+      dynamic: "5 segundos, es parecido a un pago sin contacto" 
     },
     { 
       static: "Escucha", 
@@ -53,6 +57,10 @@ function startPhraseAnimation() {
     { 
       static: "Descubre", 
       dynamic: "tu registro único de la interacción en pantalla" 
+    },
+    { 
+      static: "Escanea", 
+      dynamic: "También puedes leer las etiquetas con tu teléfono" 
     }
   ];
 

@@ -23,20 +23,20 @@ class AudioManager {
     // Settings (feel free to ajustar)
     this.settings = {
       master: {
-        volume: 1.4,
+        volume: 1,
         stereoWidth: 0.6
       },
       ambient: {
         volume: 0.51,
-        baseFreq: 55.0/2,     // sub / low drone base
+        baseFreq: 55.0,     // sub / low drone base
         detuneCents: [0, 6, -7], // multiple oscillators detuned in cents
         bandpassCenter: 200, // resonant band that gives 'body'
         bandpassQ: 6,
         lfoRate: 0.02,      // very slow breathing
-        lfoAmountHz: 12,    // amount to move the bandpass center
+        lfoAmountHz: 120,    // amount to move the bandpass center
         reverbTime: 4.5,    // long tail
-        noiseLevel: 0.08,
-        subtleRandomEvents: 0.3 // chance per minute of a small event
+        noiseLevel: 0.3,
+        subtleRandomEvents: 0.75 // chance per minute of a small event
       },
       success: {
         volume: 0.78,
@@ -65,7 +65,7 @@ class AudioManager {
         volume: 0.52,
         duration: 1.6,
         sweepLow: 20,
-        sweepHigh: 100
+        sweepHigh: 200
       }
     };
 
@@ -535,9 +535,9 @@ class AudioManager {
     const now = ctx.currentTime;
 
     const textures = [
-      { type: 'bell', freq: 660, dur: 3.8, vol: 0.045 },
-      { type: 'granularNoise', dur: 2.2, vol: 0.03 },
-      { type: 'lowSweep', freq: 140, dur: 2.6, vol: 0.04 }
+      { type: 'bell', freq: 660, dur: 3.8, vol: 0.145 },
+      { type: 'granularNoise', dur: 2.2, vol: 0.5 },
+      { type: 'lowSweep', freq: 140, dur: 2.6, vol: 0.14 }
     ];
 
     const t = textures[Math.floor(Math.random() * textures.length)];
