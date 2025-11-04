@@ -34,36 +34,14 @@ function initCSSMessageLayer() {
 
 function startPhraseAnimation() {
   const phrases = [
-    { 
-      static: "Comienza", 
-      dynamic: "identificando la zona de lectura (roja) en el dispositivo" 
-    },
-    { 
-      static: "Acerca", 
-      dynamic: "el dispositivo a la etiqueta blanca de los cuadros" 
-    },
-    { 
-      static: "Comprueba", 
-      dynamic: "el módulo rojo debe estar en paralelo a la etiqueta" 
-    },
-    { 
-      static: "Espera", 
-      dynamic: "5 segundos, es parecido a un pago sin contacto" 
-    },
-    { 
-      static: "Escucha", 
-      dynamic: "una confirmación, la pantalla deberá cambiar" 
-    },
-    { 
-      static: "Descubre", 
-      dynamic: "tu registro único de la interacción en pantalla" 
-    },
-    { 
-      static: "Escanea", 
-      dynamic: "También puedes leer las etiquetas con tu teléfono" 
-    }
+    { static: "Inicia", dynamic: "reconociendo la zona roja del lector" },
+    { static: "Acércala", dynamic: "a la etiqueta blanca, sin tocarla" },
+    { static: "Mantén", dynamic: "una distancia corta entre ambas" },
+    { static: "Aguarda", dynamic: "unos segundos… la respuesta llegará" },
+    { static: "Escucha", dynamic: "una señal y contempla el cambio" },
+    { static: "Descubre", dynamic: "tu registro, un trazo único en pantalla" }
   ];
-
+  
   function updatePhrase() {
     const phrase = phrases[currentPhraseIndex];
     document.getElementById('static-text').textContent = phrase.static;
