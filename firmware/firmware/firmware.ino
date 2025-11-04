@@ -1,5 +1,3 @@
-// 7 horas antes
-
 #include "src/env.h"  // Contiene WIFI_SSID, WIFI_PASSWORD, API_URL
 
 #include <Wire.h>
@@ -48,6 +46,51 @@ int rCurr = 0, gCurr = 0, bCurr = 0;
 unsigned long lastBeepTime = 0;
 bool buzzerOn = false;
 const int beepInterval = 200; // ms, duración de cada beep en PROCESSING
+
+// ------------------- Gestión de Tags -------------------
+String lastTagUid = "";
+unsigned long lastTagTime = 0;
+const unsigned long TAG_COOLDOWN = 3000; // 3 segundos entre lecturas
+
+// ------------------- Declaraciones de funciones -------------------
+void connectWiFi();
+void syncTime();
+void setState(SystemState newState);
+void setColor(int r, int g, int b);
+String getTagUid(NfcTag &tag);
+
+// ------------------- Clase WiFi Manager -------------------
+class WiFiManager {
+private:
+  unsigned long lastCheck = 0;
+  const unsigned long CHECK_INTERVAL = 15000; // 15 segundos
+  int connectionAttempts = 0;
+  const int MAX_ATTEMPTS = 3;
+
+public:
+  bool ensureConnected() {
+    if (WiFi.status() == WL_CONNECTED) {
+      connectionAttempts = 0; // Reset contador si está conectado
+      return true;
+    }
+
+    if (millis() - lastCheck > CHECK_INTERVAL) {
+      lastCheck = millis();
+      
+      if (connectionAttempts < MAX_ATTEMPTS) {
+        Serial.println("🔁 Reconectando WiFi...");
+        connectWiFi();
+        connectionAttempts++;
+      } else {
+        Serial.println("🚨 Múltiples fallos de WiFi, reiniciando...");
+        ESP.restart();
+      }
+    }
+    return false;
+  }
+};
+
+WiFiManager wifiManager;
 
 // ------------------- Funciones buzzer -------------------
 void playTone(int freq, int duration) {
@@ -119,20 +162,19 @@ void loop() {
     noTone(BUZZER_PIN);  // asegurarse de apagar buzzer en otros estados
   }
 
-  // Verificar conexión WiFi periódicamente
-  static unsigned long lastWifiCheck = 0;
-  if (now - lastWifiCheck > 30000) { // Cada 30 segundos
-    lastWifiCheck = now;
-    if (WiFi.status() != WL_CONNECTED) {
-      Serial.println("⚠️ WiFi desconectado, reconectando...");
-      connectWiFi();
-    }
+  // Verificación WiFi mejorada
+  if (!wifiManager.ensureConnected() && currentState == STATE_PROCESSING) {
+    setState(STATE_ERROR);
+    return;
   }
+
+  // Debug info periódica
+  debugSystemInfo();
 
   // Manejo estados
   switch (currentState) {
     case STATE_WAITING:
-      if (nfc.tagPresent()) setState(STATE_PROCESSING);
+      if (shouldProcessNewTag()) setState(STATE_PROCESSING);
       break;
 
     case STATE_PROCESSING:
@@ -157,17 +199,64 @@ void loop() {
   }
 }
 
-// ------------------- Lógica NFC -------------------
+// ------------------- Gestión Mejorada de Tags -------------------
+bool shouldProcessNewTag() {
+  if (!nfc.tagPresent()) return false;
+  
+  NfcTag tag = nfc.read();
+  String currentUid = getTagUid(tag);
+  unsigned long now = millis();
+  
+  // Evitar procesar el mismo tag repetidamente
+  if (currentUid == lastTagUid && (now - lastTagTime) < TAG_COOLDOWN) {
+    Serial.println("⏭️ Tag ya procesado recientemente, ignorando...");
+    return false;
+  }
+  
+  lastTagUid = currentUid;
+  lastTagTime = now;
+  Serial.println("🏷️ Nuevo tag detectado: " + currentUid);
+  return true;
+}
+
+String getTagUid(NfcTag &tag) {
+  String uid = "";
+  byte uidBytes[tag.getUidLength()];
+  tag.getUid(uidBytes, tag.getUidLength());
+  
+  for (int i = 0; i < tag.getUidLength(); i++) {
+    if (uidBytes[i] < 0x10) uid += "0";
+    uid += String(uidBytes[i], HEX);
+  }
+  return uid;
+}
+
+// ------------------- Lógica NFC Mejorada -------------------
 void processTag() {
   Serial.println("🔍 Detectado - Leyendo...");
 
-  if (!nfc.tagPresent()) {
-    Serial.println("❌ Tag perdido durante lectura");
+  // Intentar lectura múltiple con timeout
+  const unsigned long readTimeout = 2000;
+  unsigned long startTime = millis();
+  NfcTag tag;
+  bool readSuccess = false;
+
+  while (millis() - startTime < readTimeout && !readSuccess) {
+    if (nfc.tagPresent()) {
+      tag = nfc.read();
+      if (tag.getUidLength() > 0) {
+        readSuccess = true;
+        break;
+      }
+    }
+    delay(50);
+  }
+
+  if (!readSuccess) {
+    Serial.println("❌ No se pudo leer el tag correctamente");
     setState(STATE_ERROR);
     return;
   }
-
-  NfcTag tag = nfc.read();
 
   if (!tag.hasNdefMessage()) {
     Serial.println("❌ Tag no contiene NDEF");
@@ -198,29 +287,50 @@ void processTag() {
   }
 }
 
-void sendToEndpoint(int index) {
-  Serial.println("📤 Enviando índice " + String(index) + " a: " + String(API_URL));
+// ------------------- HTTP Client Mejorado -------------------
+bool sendToEndpointWithRetry(int index, int maxRetries = 2) {
+  for (int attempt = 1; attempt <= maxRetries; attempt++) {
+    Serial.println("📤 Enviando índice " + String(index) + " (Intento " + String(attempt) + ")");
+    
+    HTTPClient http;
+    http.setTimeout(10000); // 10 segundos timeout
+    http.setReuse(true);
+    
+    String payload = "{\"index\":" + String(index) + "}";
+    http.begin(API_URL);
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpCode = http.POST(payload);
+    String response = http.getString();
+    http.end();
 
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️ WiFi desconectado, intentando reconectar...");
-    connectWiFi();
+    Serial.println("📡 Código HTTP: " + String(httpCode));
+    if (response.length() > 0) {
+      Serial.println("📦 Respuesta: " + response);
+    }
+
+    if (httpCode == 200) {
+      Serial.println("✅ Envío exitoso");
+      return true;
+    } else if (httpCode == -1) {
+      Serial.println("🌐 Error de conexión, reintentando...");
+      delay(1000 * attempt); // Backoff exponencial
+    } else {
+      Serial.println("❌ Error HTTP: " + String(httpCode));
+      break; // No reintentar para errores HTTP distintos a timeout
+    }
   }
+  return false;
+}
 
-  HTTPClient http;
-  String payload = "{\"index\":" + String(index) + "}";
+void sendToEndpoint(int index) {
+  noTone(BUZZER_PIN); // Detener sonido inmediatamente
 
-  http.begin(API_URL);
-  http.addHeader("Content-Type", "application/json");
-
-  int httpCode = http.POST(payload);
-
-  // Detener beep al terminar
-  noTone(BUZZER_PIN);
-
-  if (httpCode == 200) setState(STATE_SUCCESS);
-  else setState(STATE_ERROR);
-
-  http.end();
+  if (sendToEndpointWithRetry(index)) {
+    setState(STATE_SUCCESS);
+  } else {
+    setState(STATE_ERROR);
+  }
 }
 
 // ------------------- Extra NFC -------------------
@@ -413,4 +523,19 @@ void syncTime() {
   if (getLocalTime(&timeinfo)) Serial.printf("⏰ Hora: %02d:%02d:%02d\n", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
 }
 
-// comentario
+// ------------------- Debugging Mejorado -------------------
+void debugSystemInfo() {
+  static unsigned long lastDebug = 0;
+  if (millis() - lastDebug > 30000) { // Cada 30 segundos
+    lastDebug = millis();
+    
+    Serial.println("=== SYSTEM INFO ===");
+    Serial.println("Estado: " + String(currentState));
+    Serial.println("WiFi: " + String(WiFi.status() == WL_CONNECTED ? "Conectado" : "Desconectado"));
+    Serial.println("RSSI: " + String(WiFi.RSSI()) + " dBm");
+    Serial.println("Memoria libre: " + String(esp_get_free_heap_size()) + " bytes");
+    Serial.println("Último tag: " + lastTagUid);
+    Serial.println("Tiempo desde último tag: " + String((millis() - lastTagTime) / 1000) + "s");
+    Serial.println("==================");
+  }
+}
