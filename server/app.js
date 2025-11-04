@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const http = require('http');
 const WebSocket = require('ws');
-const sqlite3 = require('sqlite3').verbose(); // 👈 AÑADIR
+const sqlite3 = require('sqlite3').verbose();
 
 const app = express();
 
@@ -34,7 +34,7 @@ wss.on('connection', (ws) => {
   });
 });
 
-// 4️⃣ CONEXIÓN A BD (AÑADIR)
+// 4️⃣ CONEXIÓN A BD
 const db = new sqlite3.Database('./nfc_snapshots.db', (err) => {
   if (err) {
     console.error('Error abriendo BD:', err.message);
@@ -52,7 +52,7 @@ const db = new sqlite3.Database('./nfc_snapshots.db', (err) => {
   }
 });
 
-// 5️⃣ Endpoint para NFC (MODIFICADO - ahora guarda en BD también)
+// 5️⃣ Endpoint para NFC
 app.post('/api/nfc', (req, res) => {
   const { index } = req.body;
   console.log('NFC recibido:', index);
@@ -67,7 +67,7 @@ app.post('/api/nfc', (req, res) => {
   res.status(200).send('ok');
 });
 
-// 6️⃣ NUEVO ENDPOINT PARA SNAPSHOTS
+// 6️⃣ Endpoint para SNAPSHOTS
 app.post('/api/nfc-events', (req, res) => {
   try {
     const { timestamp, nfc_index, texture_name, snapshot_data } = req.body;
@@ -103,7 +103,7 @@ app.post('/api/nfc-events', (req, res) => {
   }
 });
 
-// 7️⃣ OPCIONAL: Endpoint para consultar historial
+// 7️⃣ Endpoint para consultar historial
 app.get('/api/nfc-events', (req, res) => {
   const { limit = 50, nfc_index } = req.query;
   
@@ -127,7 +127,157 @@ app.get('/api/nfc-events', (req, res) => {
   });
 });
 
-// 8️⃣ Endpoint para activar desde query param
+// 8️⃣ 📊 ENDPOINTS DE ANALYTICS COMPLETOS
+app.get('/api/analytics/overview', (req, res) => {
+  const queries = `
+    SELECT 
+      (SELECT COUNT(*) FROM nfc_snapshots) as total_events,
+      (SELECT COUNT(DISTINCT nfc_index) FROM nfc_snapshots) as unique_nfcs,
+      (SELECT COUNT(DISTINCT texture_name) FROM nfc_snapshots WHERE texture_name IS NOT NULL) as unique_textures,
+      (SELECT MAX(created_at) FROM nfc_snapshots) as last_event,
+      (SELECT AVG(LENGTH(snapshot_data)) FROM nfc_snapshots) as avg_snapshot_size,
+      (SELECT SUM(LENGTH(snapshot_data)) FROM nfc_snapshots) as total_data_size
+  `;
+
+  db.get(queries, [], (err, overview) => {
+    if (err) {
+      console.error('Error en overview:', err);
+      return res.status(500).json({ error: 'Error en análisis' });
+    }
+    
+    // Datos por hora del día (¡ESTA ES LA PARTE QUE FALTABA!)
+    db.all(`
+      SELECT 
+        strftime('%H', created_at) as hour,
+        COUNT(*) as count
+      FROM nfc_snapshots 
+      GROUP BY hour 
+      ORDER BY hour
+    `, [], (err, hourly) => {
+      if (err) {
+        console.error('Error en hourly:', err);
+        return res.status(500).json({ error: 'Error en análisis' });
+      }
+      
+      // Eventos por NFC
+      db.all(`
+        SELECT nfc_index, COUNT(*) as count 
+        FROM nfc_snapshots 
+        GROUP BY nfc_index 
+        ORDER BY count DESC
+      `, [], (err, byNFC) => {
+        if (err) {
+          console.error('Error en byNFC:', err);
+          return res.status(500).json({ error: 'Error en análisis' });
+        }
+        
+        res.json({
+          overview: {
+            ...overview,
+            total_data_size_mb: (overview.total_data_size / 1024 / 1024).toFixed(2) + ' MB'
+          },
+          hourly_distribution: hourly,
+          events_by_nfc: byNFC,
+          database_info: {
+            last_updated: new Date().toISOString(),
+            estimated_records: overview.total_events
+          }
+        });
+      });
+    });
+  });
+});
+
+// 9️⃣ Exportar datos para análisis externo
+app.get('/api/analytics/export', (req, res) => {
+  const { format = 'json' } = req.query;
+  
+  db.all(`
+    SELECT 
+      id,
+      timestamp,
+      nfc_index,
+      texture_name,
+      LENGTH(snapshot_data) as snapshot_size,
+      created_at
+    FROM nfc_snapshots 
+    ORDER BY created_at DESC
+  `, [], (err, rows) => {
+    if (err) {
+      console.error('Error exportando:', err);
+      return res.status(500).json({ error: 'Error exportando' });
+    }
+    
+    if (format === 'csv') {
+      // Convertir a CSV simple
+      const headers = ['id', 'timestamp', 'nfc_index', 'texture_name', 'snapshot_size', 'created_at'];
+      const csv = [
+        headers.join(','),
+        ...rows.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=nfc_events_export.csv');
+      return res.send(csv);
+    } else {
+      res.json({
+        metadata: {
+          exported_at: new Date().toISOString(),
+          total_records: rows.length,
+          format: 'json'
+        },
+        data: rows
+      });
+    }
+  });
+});
+
+// 🔟 Análisis específico por NFC
+app.get('/api/analytics/nfc/:index', (req, res) => {
+  const nfcIndex = req.params.index;
+  
+  db.all(`
+    SELECT 
+      COUNT(*) as total_uses,
+      MIN(created_at) as first_use,
+      MAX(created_at) as last_use,
+      AVG(LENGTH(snapshot_data)) as avg_snapshot_size,
+      COUNT(DISTINCT texture_name) as unique_textures_used
+    FROM nfc_snapshots 
+    WHERE nfc_index = ?
+  `, [nfcIndex], (err, stats) => {
+    if (err) {
+      console.error('Error en stats NFC:', err);
+      return res.status(500).json({ error: 'Error en análisis NFC' });
+    }
+    
+    // Historial reciente de este NFC
+    db.all(`
+      SELECT 
+        timestamp,
+        texture_name,
+        created_at,
+        LENGTH(snapshot_data) as snapshot_size
+      FROM nfc_snapshots 
+      WHERE nfc_index = ?
+      ORDER BY created_at DESC
+      LIMIT 20
+    `, [nfcIndex], (err, history) => {
+      if (err) {
+        console.error('Error en history NFC:', err);
+        return res.status(500).json({ error: 'Error en historial NFC' });
+      }
+      
+      res.json({
+        nfc_index: nfcIndex,
+        statistics: stats[0],
+        recent_activity: history
+      });
+    });
+  });
+});
+
+// 1️⃣1️⃣ Endpoint para activar desde query param
 app.get('/trigger', (req, res) => {
   const nfcIndex = parseInt(req.query.nfc);
   clients.forEach((client) => {
@@ -138,15 +288,18 @@ app.get('/trigger', (req, res) => {
   res.send(`Trigger recibido para índice ${nfcIndex}`);
 });
 
-// 9️⃣ SPA fallback
+// 1️⃣2️⃣ SPA fallback
 app.use((req, res) => {
   res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
-// 🔟 Puerto
+// 1️⃣3️⃣ Puerto
 const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`Servidor en http://localhost:${PORT}`);
+  console.log(`📊 Endpoints de analytics disponibles:`);
+  console.log(`   http://localhost:${PORT}/api/analytics/overview`);
+  console.log(`   http://localhost:3000/api/analytics/export`);
 });
 
 // Manejo graceful de cierre
