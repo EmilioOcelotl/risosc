@@ -75,8 +75,18 @@ class AudioManager {
 
   async init() {
     if (this.isInitialized) return;
-    console.log('AudioManager: listo (esperando initAudioContext con gesto del usuario)');
-  }
+
+    // Intentar inicializar automáticamente
+    try {
+        this.initAudioContext();
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+        }
+        console.log('AudioManager: AudioContext iniciado automáticamente');
+    } catch (e) {
+        console.warn('AudioManager: fallo auto-init, se requiere gesto del usuario', e);
+    }
+}
 
   initAudioContext() {
     if (this.audioContext) return;
