@@ -63,14 +63,17 @@ chromium \
   --app="https://risosc.ocelotl.cc" \
   --disable-extensions \
   --disable-translate \
-  --disable-features=TranslateUI
+  --disable-features=TranslateUI \
+  --autoplay-policy=no-user-gesture-required \
+  --disable-cache \
+  --disk-cache-dir=/dev/null
 ```
 
 xrandr ajusta el proyector por defecto y la resolución. Los valores pueden ser cambiados 
 
 Los tres scripts de xset imposibilitan que la computadora apague la pantalla. 
 
-Chromium lo que hace es iniciar en fullscreen, abre un enlace, deshabilita extensiones y supuestamente traducciones. Pero no sirvió, entonces cuando se abre una página por primera vez, es necesario cerrar el diálogo de traducción y nunca más vuelve a aparecer. 
+Chromium lo que hace es iniciar en fullscreen, abre un enlace, deshabilita extensiones y supuestamente traducciones. Pero no sirvió, entonces cuando se abre una página por primera vez, es necesario cerrar el diálogo de traducción y nunca más vuelve a aparecer. Actualmente auto inicia audio y deshabilita caché. 
 
 ## Web
 
