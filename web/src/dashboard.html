@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,7 +35,7 @@
         .header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .header p {
@@ -53,7 +54,7 @@
             background: white;
             padding: 25px;
             border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
             text-align: center;
             transition: transform 0.3s ease;
         }
@@ -93,7 +94,7 @@
             background: white;
             padding: 25px;
             border-radius: 15px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
 
         .chart-container h2 {
@@ -152,17 +153,18 @@
             .charts-grid {
                 grid-template-columns: 1fr;
             }
-            
+
             .chart-container {
                 padding: 15px;
             }
-            
+
             .header h1 {
                 font-size: 2em;
             }
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
@@ -242,18 +244,18 @@
             try {
                 showLoading();
                 hideError();
-                
+
                 const response = await fetch('/api/analytics/overview');
                 if (!response.ok) throw new Error('Error en la respuesta del servidor');
-                
+
                 const data = await response.json();
-                
+
                 hideLoading();
                 showDashboard();
                 updateStats(data);
                 createCharts(data);
                 updateLastUpdate();
-                
+
             } catch (error) {
                 console.error('Error:', error);
                 hideLoading();
@@ -288,7 +290,7 @@
         function updateStats(data) {
             const stats = data.overview;
             const statsGrid = document.getElementById('statsGrid');
-            
+
             const statCards = [
                 {
                     title: 'Total de Eventos',
@@ -346,17 +348,19 @@
         }
 
         // Gráfica de eventos por hora - CORREGIDA PARA GMT-6
+        // Gráfica de eventos por hora - CORREGIDA PARA GMT-6 (VERSIÓN SIMPLIFICADA)
         function createHourlyChart(hourlyData) {
             const ctx = document.getElementById('hourlyChart').getContext('2d');
-            
-            // Preparar datos para 24 horas y ajustar GMT-6
-            const hours = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0'));
-            const counts = hours.map(hour => {
-                // Ajustar hora UTC a GMT-6 (restar 6 horas)
-                let adjustedHour = (parseInt(hour) + 18) % 24; // +18 es equivalente a -6
-                const adjustedHourStr = adjustedHour.toString().padStart(2, '0');
-                
-                const found = hourlyData.find(item => item.hour === adjustedHourStr);
+
+            // Preparar datos para 24 horas en GMT-6
+            const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+            const counts = hours.map(hourLocal => {
+                // Convertir hora local GMT-6 a UTC
+                // Si son las 15 hrs GMT-6, en UTC son las 21 hrs (15 + 6 = 21)
+                let utcHour = (parseInt(hourLocal) + 6) % 24;
+                const utcHourStr = utcHour.toString().padStart(2, '0');
+
+                const found = hourlyData.find(item => item.hour === utcHourStr);
                 return found ? found.count : 0;
             });
 
@@ -365,12 +369,7 @@
             charts.hourly = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: hours.map(h => {
-                        // Mostrar horas en formato local (GMT-6)
-                        const hourNum = parseInt(h);
-                        const displayHour = hourNum === 0 ? 18 : (hourNum <= 6 ? hourNum + 18 : hourNum - 6);
-                        return displayHour.toString().padStart(2, '0') + ':00';
-                    }),
+                    labels: hours.map(h => h + ':00'),
                     datasets: [{
                         label: 'Eventos por Hora (GMT-6)',
                         data: counts,
@@ -392,8 +391,7 @@
                             mode: 'index',
                             intersect: false,
                             callbacks: {
-                                title: function(tooltipItems) {
-                                    // Mostrar hora en tooltip
+                                title: function (tooltipItems) {
                                     return `Hora: ${tooltipItems[0].label}`;
                                 }
                             }
@@ -421,7 +419,7 @@
         // Gráfica de distribución por NFC (Doughnut)
         function createNFCDistributionChart(nfcData) {
             const ctx = document.getElementById('nfcDistributionChart').getContext('2d');
-            
+
             const labels = nfcData.map(item => `NFC ${item.nfc_index}`);
             const data = nfcData.map(item => item.count);
             const backgroundColors = generateColors(nfcData.length);
@@ -459,7 +457,7 @@
         // Gráfica de top NFCs (Bar chart)
         function createTopNFCChart(nfcData) {
             const ctx = document.getElementById('topNfcChart').getContext('2d');
-            
+
             // Tomar solo los top 10
             const top10 = nfcData.slice(0, 10);
             const labels = top10.map(item => `NFC ${item.nfc_index}`);
@@ -509,7 +507,7 @@
         // Gráfica de tamaños (usando datos del overview)
         function createSizeChart(overview) {
             const ctx = document.getElementById('sizeChart').getContext('2d');
-            
+
             const sizeData = {
                 total: overview.total_data_size || 0,
                 average: overview.avg_snapshot_size || 0
@@ -538,7 +536,7 @@
                         },
                         tooltip: {
                             callbacks: {
-                                label: function(context) {
+                                label: function (context) {
                                     const value = context.raw;
                                     if (value > 1024 * 1024) {
                                         return (value / (1024 * 1024)).toFixed(2) + ' MB';
@@ -578,12 +576,12 @@
             const now = new Date();
             // Ajustar a GMT-6 (CDMX)
             const cdmxTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
-            
-            document.getElementById('updateTime').textContent = 
-                cdmxTime.toLocaleString('es-MX', { 
+
+            document.getElementById('updateTime').textContent =
+                cdmxTime.toLocaleString('es-MX', {
                     timeZone: 'America/Mexico_City',
-                    year: 'numeric', 
-                    month: 'long', 
+                    year: 'numeric',
+                    month: 'long',
                     day: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit',
@@ -598,4 +596,5 @@
         // setInterval(loadData, 30000);
     </script>
 </body>
+
 </html>
