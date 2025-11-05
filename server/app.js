@@ -145,7 +145,7 @@ app.get('/api/analytics/overview', (req, res) => {
       return res.status(500).json({ error: 'Error en análisis' });
     }
     
-    // Datos por hora del día (¡ESTA ES LA PARTE QUE FALTABA!)
+    // Datos por hora del día
     db.all(`
       SELECT 
         strftime('%H', created_at) as hour,
@@ -188,51 +188,7 @@ app.get('/api/analytics/overview', (req, res) => {
   });
 });
 
-// 9️⃣ Exportar datos para análisis externo
-app.get('/api/analytics/export', (req, res) => {
-  const { format = 'json' } = req.query;
-  
-  db.all(`
-    SELECT 
-      id,
-      timestamp,
-      nfc_index,
-      texture_name,
-      LENGTH(snapshot_data) as snapshot_size,
-      created_at
-    FROM nfc_snapshots 
-    ORDER BY created_at DESC
-  `, [], (err, rows) => {
-    if (err) {
-      console.error('Error exportando:', err);
-      return res.status(500).json({ error: 'Error exportando' });
-    }
-    
-    if (format === 'csv') {
-      // Convertir a CSV simple
-      const headers = ['id', 'timestamp', 'nfc_index', 'texture_name', 'snapshot_size', 'created_at'];
-      const csv = [
-        headers.join(','),
-        ...rows.map(row => headers.map(header => `"${row[header] || ''}"`).join(','))
-      ].join('\n');
-      
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename=nfc_events_export.csv');
-      return res.send(csv);
-    } else {
-      res.json({
-        metadata: {
-          exported_at: new Date().toISOString(),
-          total_records: rows.length,
-          format: 'json'
-        },
-        data: rows
-      });
-    }
-  });
-});
-
-// 🔟 Análisis específico por NFC
+// 9️⃣ Análisis específico por NFC
 app.get('/api/analytics/nfc/:index', (req, res) => {
   const nfcIndex = req.params.index;
   
@@ -277,7 +233,7 @@ app.get('/api/analytics/nfc/:index', (req, res) => {
   });
 });
 
-// 1️⃣1️⃣ Endpoint para activar desde query param
+// 🔟 Endpoint para activar desde query param
 app.get('/trigger', (req, res) => {
   const nfcIndex = parseInt(req.query.nfc);
   clients.forEach((client) => {
@@ -288,7 +244,12 @@ app.get('/trigger', (req, res) => {
   res.send(`Trigger recibido para índice ${nfcIndex}`);
 });
 
-// 1️⃣2️⃣ SPA fallback
+// 🆕 1️⃣1️⃣ RUTA DEL DASHBOARD - IMPORTANTE: ANTES del SPA fallback
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(WEB_SRC_DIR, 'dashboard.html'));
+});
+
+// 1️⃣2️⃣ SPA fallback - DEBE IR AL FINAL
 app.use((req, res) => {
   res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
@@ -299,7 +260,7 @@ server.listen(PORT, () => {
   console.log(`Servidor en http://localhost:${PORT}`);
   console.log(`📊 Endpoints de analytics disponibles:`);
   console.log(`   http://localhost:${PORT}/api/analytics/overview`);
-  console.log(`   http://localhost:3000/api/analytics/export`);
+  console.log(`   http://localhost:${PORT}/dashboard`); // 👈 NUEVA LÍNEA
 });
 
 // Manejo graceful de cierre

@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard NFC Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .subtitle {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h2 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.4em;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            padding: 40px;
+        }
+
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .last-update {
+            text-align: center;
+            color: white;
+            margin-top: 20px;
+            opacity: 0.8;
+        }
+
+        .refresh-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #45a049;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .chart-container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Dashboard NFC Analytics</h1>
+            <p>Estadísticas en tiempo real de eventos NFC</p>
+            <button class="refresh-btn" onclick="loadData()">🔄 Actualizar Datos</button>
+        </div>
+
+        <div id="loading" class="loading">
+            Cargando datos...
+        </div>
+
+        <div id="error" class="error" style="display: none;">
+            Error al cargar los datos. Por favor, intenta nuevamente.
+        </div>
+
+        <div id="dashboard" style="display: none;">
+            <!-- Estadísticas principales -->
+            <div class="stats-grid" id="statsGrid">
+                <!-- Las tarjetas se llenarán con JavaScript -->
+            </div>
+
+            <!-- Gráficas -->
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h2>📈 Eventos por Hora del Día (GMT-6 - CDMX)</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="hourlyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h2>🔢 Distribución por NFC</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="nfcDistributionChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h2>🎯 Top NFCs Más Usados</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="topNfcChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h2>📦 Tamaño de Snapshots</h2>
+                    <div class="chart-wrapper">
+                        <canvas id="sizeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="last-update" id="lastUpdate">
+                Última actualización: <span id="updateTime"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let charts = {};
+
+        // Colores para las gráficas
+        const colors = {
+            primary: '#667eea',
+            secondary: '#764ba2',
+            success: '#4CAF50',
+            danger: '#ff6b6b',
+            warning: '#ffa726',
+            info: '#26c6da',
+            light: '#f8f9fa',
+            dark: '#343a40'
+        };
+
+        // Función principal para cargar datos
+        async function loadData() {
+            try {
+                showLoading();
+                hideError();
+                
+                const response = await fetch('/api/analytics/overview');
+                if (!response.ok) throw new Error('Error en la respuesta del servidor');
+                
+                const data = await response.json();
+                
+                hideLoading();
+                showDashboard();
+                updateStats(data);
+                createCharts(data);
+                updateLastUpdate();
+                
+            } catch (error) {
+                console.error('Error:', error);
+                hideLoading();
+                showError();
+            }
+        }
+
+        // Mostrar/ocultar estados
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showDashboard() {
+            document.getElementById('dashboard').style.display = 'block';
+        }
+
+        function showError() {
+            document.getElementById('error').style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+
+        // Actualizar tarjetas de estadísticas
+        function updateStats(data) {
+            const stats = data.overview;
+            const statsGrid = document.getElementById('statsGrid');
+            
+            const statCards = [
+                {
+                    title: 'Total de Eventos',
+                    value: stats.total_events || 0,
+                    subtitle: 'Eventos registrados',
+                    icon: '📊'
+                },
+                {
+                    title: 'NFCs Únicos',
+                    value: stats.unique_nfcs || 0,
+                    subtitle: 'Tags NFC diferentes',
+                    icon: '🔖'
+                },
+                {
+                    title: 'Texturas Únicas',
+                    value: stats.unique_textures || 0,
+                    subtitle: 'Texturas diferentes usadas',
+                    icon: '🎨'
+                },
+                {
+                    title: 'Tamaño Total Datos',
+                    value: stats.total_data_size_mb || '0 MB',
+                    subtitle: 'Espacio utilizado',
+                    icon: '💾'
+                },
+                {
+                    title: 'Tamaño Promedio',
+                    value: stats.avg_snapshot_size ? Math.round(stats.avg_snapshot_size) + ' bytes' : '0 bytes',
+                    subtitle: 'Por snapshot',
+                    icon: '📦'
+                },
+                {
+                    title: 'Último Evento',
+                    value: stats.last_event ? new Date(stats.last_event).toLocaleDateString() : 'Nunca',
+                    subtitle: 'Fecha del último registro',
+                    icon: '🕒'
+                }
+            ];
+
+            statsGrid.innerHTML = statCards.map(card => `
+                <div class="stat-card">
+                    <h3>${card.icon} ${card.title}</h3>
+                    <div class="value">${card.value}</div>
+                    <div class="subtitle">${card.subtitle}</div>
+                </div>
+            `).join('');
+        }
+
+        // Crear todas las gráficas
+        function createCharts(data) {
+            createHourlyChart(data.hourly_distribution);
+            createNFCDistributionChart(data.events_by_nfc);
+            createTopNFCChart(data.events_by_nfc);
+            createSizeChart(data.overview);
+        }
+
+        // Gráfica de eventos por hora - CORREGIDA PARA GMT-6
+        function createHourlyChart(hourlyData) {
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            
+            // Preparar datos para 24 horas y ajustar GMT-6
+            const hours = Array.from({length: 24}, (_, i) => i.toString().padStart(2, '0'));
+            const counts = hours.map(hour => {
+                // Ajustar hora UTC a GMT-6 (restar 6 horas)
+                let adjustedHour = (parseInt(hour) + 18) % 24; // +18 es equivalente a -6
+                const adjustedHourStr = adjustedHour.toString().padStart(2, '0');
+                
+                const found = hourlyData.find(item => item.hour === adjustedHourStr);
+                return found ? found.count : 0;
+            });
+
+            if (charts.hourly) charts.hourly.destroy();
+
+            charts.hourly = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: hours.map(h => {
+                        // Mostrar horas en formato local (GMT-6)
+                        const hourNum = parseInt(h);
+                        const displayHour = hourNum === 0 ? 18 : (hourNum <= 6 ? hourNum + 18 : hourNum - 6);
+                        return displayHour.toString().padStart(2, '0') + ':00';
+                    }),
+                    datasets: [{
+                        label: 'Eventos por Hora (GMT-6)',
+                        data: counts,
+                        borderColor: colors.primary,
+                        backgroundColor: `${colors.primary}20`,
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    // Mostrar hora en tooltip
+                                    return `Hora: ${tooltipItems[0].label}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Número de Eventos'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Hora del Día (GMT-6 - CDMX)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfica de distribución por NFC (Doughnut)
+        function createNFCDistributionChart(nfcData) {
+            const ctx = document.getElementById('nfcDistributionChart').getContext('2d');
+            
+            const labels = nfcData.map(item => `NFC ${item.nfc_index}`);
+            const data = nfcData.map(item => item.count);
+            const backgroundColors = generateColors(nfcData.length);
+
+            if (charts.distribution) charts.distribution.destroy();
+
+            charts.distribution = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 15
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+
+        // Gráfica de top NFCs (Bar chart)
+        function createTopNFCChart(nfcData) {
+            const ctx = document.getElementById('topNfcChart').getContext('2d');
+            
+            // Tomar solo los top 10
+            const top10 = nfcData.slice(0, 10);
+            const labels = top10.map(item => `NFC ${item.nfc_index}`);
+            const data = top10.map(item => item.count);
+
+            if (charts.topNfc) charts.topNfc.destroy();
+
+            charts.topNfc = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Eventos',
+                        data: data,
+                        backgroundColor: colors.success,
+                        borderColor: colors.success,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Número de Eventos'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Índice NFC'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfica de tamaños (usando datos del overview)
+        function createSizeChart(overview) {
+            const ctx = document.getElementById('sizeChart').getContext('2d');
+            
+            const sizeData = {
+                total: overview.total_data_size || 0,
+                average: overview.avg_snapshot_size || 0
+            };
+
+            if (charts.size) charts.size.destroy();
+
+            charts.size = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Tamaño Total', 'Promedio por Snapshot'],
+                    datasets: [{
+                        label: 'Bytes',
+                        data: [sizeData.total, sizeData.average],
+                        backgroundColor: [colors.warning, colors.info],
+                        borderColor: [colors.warning, colors.info],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    if (value > 1024 * 1024) {
+                                        return (value / (1024 * 1024)).toFixed(2) + ' MB';
+                                    } else if (value > 1024) {
+                                        return (value / 1024).toFixed(2) + ' KB';
+                                    }
+                                    return value + ' bytes';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Tamaño (bytes)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Generar colores para las gráficas
+        function generateColors(count) {
+            const colorPalette = [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384',
+                '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40'
+            ];
+            return colorPalette.slice(0, count);
+        }
+
+        // Actualizar última actualización - CORREGIDA PARA GMT-6
+        function updateLastUpdate() {
+            const now = new Date();
+            // Ajustar a GMT-6 (CDMX)
+            const cdmxTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+            
+            document.getElementById('updateTime').textContent = 
+                cdmxTime.toLocaleString('es-MX', { 
+                    timeZone: 'America/Mexico_City',
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                }) + ' (GMT-6)';
+        }
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', loadData);
+
+        // Auto-refresh desactivado - solo se actualiza manualmente
+        // setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
