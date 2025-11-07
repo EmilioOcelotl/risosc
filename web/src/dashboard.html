@@ -135,16 +135,33 @@
             hideError(){document.getElementById('error').style.display='none';}
 
             updateStats(data){
-                const stats=data.overview;
-                const grid=document.getElementById('statsGrid');
-                const cards=[
-                    {title:'Último Evento',value:stats.last_event?new Date(stats.last_event).toLocaleString('es-MX',{timeZone:'America/Mexico_City',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}):'Nunca',subtitle:'Fecha y hora del último registro',icon:'🕒'},
-                    {title:'Total de Eventos',value:stats.total_events||0,subtitle:'Eventos registrados',icon:'📊'},
-                    {title:'Promedio Diario',value:stats.avg_per_day||0,subtitle:'Eventos por día (aprox.)',icon:'📅'},
-                    {title:'Tamaño Total Datos',value:stats.total_data_size_mb?stats.total_data_size_mb:'0 MB',subtitle:'Espacio utilizado',icon:'💾'}
-                ];
-                grid.innerHTML=cards.map(c=>`<div class="stat-card"><h3>${c.icon} ${c.title}</h3><div class="value">${c.value}</div><div class="subtitle">${c.subtitle}</div></div>`).join('');
-            }
+    const stats=data.overview;
+    const grid=document.getElementById('statsGrid');
+    
+    // CORREGIR solo esta línea - sumar 2 horas para convertir de SF a CDMX
+    let lastEventDisplay = 'Nunca';
+    if(stats.last_event){
+        const serverTime = new Date(stats.last_event);
+        serverTime.setHours(serverTime.getHours() + 2); // ← Solo esta corrección
+        lastEventDisplay = serverTime.toLocaleString('es-MX',{
+            timeZone:'America/Mexico_City',
+            year:'numeric',
+            month:'short',
+            day:'numeric',
+            hour:'2-digit',
+            minute:'2-digit',
+            second:'2-digit'
+        });
+    }
+
+    const cards=[
+        {title:'Último Evento',value:lastEventDisplay,subtitle:'Fecha y hora del último registro',icon:'🕒'},
+        {title:'Total de Eventos',value:stats.total_events||0,subtitle:'Eventos registrados',icon:'📊'},
+        {title:'Promedio Diario',value:stats.avg_per_day||0,subtitle:'Eventos por día (aprox.)',icon:'📅'},
+        {title:'Tamaño Total Datos',value:stats.total_data_size_mb?stats.total_data_size_mb:'0 MB',subtitle:'Espacio utilizado',icon:'💾'}
+    ];
+    grid.innerHTML=cards.map(c=>`<div class="stat-card"><h3>${c.icon} ${c.title}</h3><div class="value">${c.value}</div><div class="subtitle">${c.subtitle}</div></div>`).join('');
+}
 
             createCharts(data){
                 this.createHourlyChart(data.hourly_distribution);
