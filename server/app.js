@@ -132,10 +132,8 @@ app.get('/api/analytics/overview', (req, res) => {
   const queries = `
     SELECT 
       (SELECT COUNT(*) FROM nfc_snapshots) as total_events,
-      (SELECT COUNT(DISTINCT nfc_index) FROM nfc_snapshots) as unique_nfcs,
-      (SELECT COUNT(DISTINCT texture_name) FROM nfc_snapshots WHERE texture_name IS NOT NULL) as unique_textures,
+      (SELECT MIN(created_at) FROM nfc_snapshots) as first_event,
       (SELECT MAX(created_at) FROM nfc_snapshots) as last_event,
-      (SELECT AVG(LENGTH(snapshot_data)) FROM nfc_snapshots) as avg_snapshot_size,
       (SELECT SUM(LENGTH(snapshot_data)) FROM nfc_snapshots) as total_data_size
   `;
 
@@ -144,7 +142,18 @@ app.get('/api/analytics/overview', (req, res) => {
       console.error('Error en overview:', err);
       return res.status(500).json({ error: 'Error en análisis' });
     }
-    
+
+    // Calcular promedio diario
+    let avg_per_day = 0;
+    if (overview.first_event && overview.last_event) {
+      const first = new Date(overview.first_event);
+      const last = new Date(overview.last_event);
+
+      // Diferencia en días (mínimo 1)
+      const diffDays = Math.max(1, (last - first) / (1000 * 60 * 60 * 24));
+      avg_per_day = overview.total_events / diffDays;
+    }
+
     // Datos por hora del día
     db.all(`
       SELECT 
@@ -158,7 +167,7 @@ app.get('/api/analytics/overview', (req, res) => {
         console.error('Error en hourly:', err);
         return res.status(500).json({ error: 'Error en análisis' });
       }
-      
+
       // Eventos por NFC
       db.all(`
         SELECT nfc_index, COUNT(*) as count 
@@ -170,11 +179,16 @@ app.get('/api/analytics/overview', (req, res) => {
           console.error('Error en byNFC:', err);
           return res.status(500).json({ error: 'Error en análisis' });
         }
-        
+
+        // Respuesta final
         res.json({
           overview: {
-            ...overview,
-            total_data_size_mb: (overview.total_data_size / 1024 / 1024).toFixed(2) + ' MB'
+            total_events: overview.total_events,
+            first_event: overview.first_event,
+            last_event: overview.last_event,
+            total_data_size: overview.total_data_size,
+            total_data_size_mb: (overview.total_data_size / 1024 / 1024).toFixed(2) + ' MB',
+            avg_per_day: avg_per_day.toFixed(2)
           },
           hourly_distribution: hourly,
           events_by_nfc: byNFC,
@@ -187,6 +201,7 @@ app.get('/api/analytics/overview', (req, res) => {
     });
   });
 });
+
 
 // 9️⃣ Análisis específico por NFC
 app.get('/api/analytics/nfc/:index', (req, res) => {
