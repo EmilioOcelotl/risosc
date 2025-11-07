@@ -142,7 +142,7 @@
     let lastEventDisplay = 'Nunca';
     if(stats.last_event){
         const serverTime = new Date(stats.last_event);
-        serverTime.setHours(serverTime.getHours() - 8); // ← Solo esta corrección
+        serverTime.setHours(serverTime.getHours() - 6); // ← Solo esta corrección
         lastEventDisplay = serverTime.toLocaleString('es-MX',{
             timeZone:'America/Mexico_City',
             year:'numeric',
