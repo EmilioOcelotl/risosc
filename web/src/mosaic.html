@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mosaico de Snapshots (rotadas 90°)</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    #grid {
+      display: grid;
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+      gap: 0;
+    }
+    .cell {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      background: #000;
+    }
+    canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <div id="grid"></div>
+
+  <script type="module">
+    class SnapshotCompressor {
+      constructor(w = 80, h = 80) {
+        this.targetWidth = w;
+        this.targetHeight = h;
+      }
+      hexToBytes(hex) {
+        const bytes = [];
+        for (let i = 0; i < hex.length; i += 2) {
+          bytes.push(parseInt(hex.substr(i, 2), 16));
+        }
+        return bytes;
+      }
+      decompress2bpp(bytes) {
+        const pixels = new Array(this.targetWidth * this.targetHeight);
+        let pixelIndex = 0;
+        for (let i = 0; i < bytes.length; i++) {
+          const byte = bytes[i];
+          for (let n = 0; n < 4; n++) {
+            if (pixelIndex < pixels.length) {
+              const shift = 6 - n * 2;
+              const colorIndex = (byte >> shift) & 0x03;
+              pixels[pixelIndex++] = colorIndex;
+            }
+          }
+        }
+        return pixels;
+      }
+      ditheredToImageData(dithered) {
+        const palette = [
+          [0, 0, 0],
+          [85, 85, 85],
+          [170, 170, 170],
+          [255, 255, 255],
+        ];
+        const imageData = new ImageData(this.targetWidth, this.targetHeight);
+        const data = imageData.data;
+        for (let i = 0; i < dithered.length; i++) {
+          const c = palette[dithered[i]];
+          const di = i * 4;
+          data[di] = c[0];
+          data[di + 1] = c[1];
+          data[di + 2] = c[2];
+          data[di + 3] = 255;
+        }
+        return imageData;
+      }
+    }
+
+    const compressor = new SnapshotCompressor();
+    const grid = document.getElementById('grid');
+
+    async function loadSnapshots() {
+      const res = await fetch('/api/nfc-events?limit=600');
+      let snapshots = await res.json();
+
+      const targetSize = 80;
+      const cols = Math.floor(window.innerWidth / targetSize);
+      const rows = Math.floor(window.innerHeight / targetSize);
+      const total = cols * rows;
+
+      if (snapshots.length < total) {
+        const repeatTimes = Math.ceil(total / snapshots.length);
+        snapshots = Array.from({length: total}, (_, i) => snapshots[i % snapshots.length]);
+      } else if (snapshots.length > total) {
+        snapshots = snapshots.slice(0, total);
+      }
+
+      grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      grid.innerHTML = '';
+
+      snapshots.forEach((snap) => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = compressor.targetWidth;
+        canvas.height = compressor.targetHeight;
+
+        const bytes = compressor.hexToBytes(snap.snapshot_data);
+        const dithered = compressor.decompress2bpp(bytes);
+        const imgData = compressor.ditheredToImageData(dithered);
+
+        // Dibujar en canvas temporal
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = compressor.targetWidth;
+        tempCanvas.height = compressor.targetHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.putImageData(imgData, 0, 0);
+
+        // Rotar 90° usando drawImage
+        ctx.save();
+        ctx.translate(canvas.width, 0); // Mover origen a esquina superior derecha
+        ctx.rotate(Math.PI / 2);        // 90° horario
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+
+        cell.appendChild(canvas);
+        grid.appendChild(cell);
+      });
+    }
+
+    loadSnapshots();
+    window.addEventListener('resize', () => loadSnapshots());
+  </script>
+</body>
+</html>

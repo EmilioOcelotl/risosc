@@ -1,46 +1,38 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RisOSC</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
     <canvas id="hydra-canvas" width="800" height="600"></canvas>
 
     <div id="right-panel">
+        <!-- Grid para mosaico (inicialmente oculto) -->
+        <div id="mosaic-grid" class="hidden"></div>
+        
         <!-- Capa para mensajes superpuestos -->
         <div id="message-overlay">
             <div id="cyberpunk-message">
                 <h1 id="main-title">RisOSC</h1>
-                <!--<p id="subtitle">Escrituras sobre lo escaso multiplicado y lo efímero único</p>-->
                 <div id="instructions">
                     <span id="static-text">ACERCA TU</span>
                     <span id="dynamic-text">TARJETA NFC</span>
                 </div>
 
-                <!-- Nueva animación NFC mejorada -->
+                <!-- Animación NFC -->
                 <div id="nfc-animation">
-                    <!-- Control remoto transparente con lector rojo -->
                     <div class="nfc-remote">
                         <div class="remote-nfc-reader"></div>
-
                     </div>
-
-                    <!-- Línea de conexión más corta -->
                     <div class="connection-line"></div>
-
-                    <!-- Círculos concéntricos (etiqueta NFC) -->
                     <div class="nfc-circles">
                         <div class="nfc-circle"></div>
                         <div class="nfc-circle"></div>
                         <div class="nfc-circle"></div>
                     </div>
-
                 </div>
             </div>
         </div>
@@ -52,18 +44,12 @@
     </div>
 
     <div id="art-description">
-        <p>Cada aproximación de tarjeta NFC activa un universo visual único en tiempo real. Estos patrones generativos
-            se comprimen hasta su esencia: 80x80 píxeles, 4 tonos de gris, apenas 3.2 kilobytes que contienen la huella
-            digital del encuentro.</p>
-        <p>Lo que presencias es el viaje de tu interacción desde lo efímero hacia lo perpetuo—de este servidor temporal
-            a la memoria inmutable de blockchain, donde cada gesto se conservará como testimonio algorítmico de que
-            estuviste aquí, en este preciso momento, dialogando con el código.</p>
+        <p>Cada aproximación de tarjeta NFC activa un universo visual único en tiempo real. Estos patrones generativos se comprimen hasta su esencia: 80x80 píxeles, 4 tonos de gris, apenas 3.2 kilobytes que contienen la huella digital del encuentro.</p>
+        <p>Lo que presencias es el viaje de tu interacción desde lo efímero hacia lo perpetuo—de este servidor temporal a la memoria inmutable de blockchain, donde cada gesto se conservará como testimonio algorítmico de que estuviste aquí, en este preciso momento, dialogando con el código.</p>
     </div>
 
-    <div id="snapshot-preview" class="hidden">
-    </div>
+    <div id="snapshot-preview"></div>
 
     <script type="module" src="main.js"></script>
 </body>
-
 </html>

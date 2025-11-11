@@ -26,8 +26,8 @@ html, body {
 }
 
 #right-panel {
-  width: 1400px;
-  height: 1080px;
+  width: 100vw;
+  height: 100vh;
   background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
@@ -399,6 +399,7 @@ html, body {
 }
 
 /* SNAPSHOT PREVIEW */
+/* SNAPSHOT PREVIEW - CORREGIDO */
 #snapshot-preview {
   position: absolute;
   padding: 4px; 
@@ -417,13 +418,15 @@ html, body {
   pointer-events: none;
   z-index: 20;
   opacity: 0;
-  transition: opacity 0.5s ease;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
   border-radius: 12px;
 }
 
 #snapshot-preview.active {
   opacity: 1;
+  visibility: visible;
 }
 
 #snapshot-preview canvas {
@@ -436,4 +439,67 @@ html, body {
 
 #art-description.hidden {
   display: none;
+}
+
+/* mosaic.css - Agregar al final de style.css */
+
+/* MOSAICO MEJORADO */
+/* MOSAICO - CSS IDÉNTICO AL EJEMPLO */
+#mosaic-grid {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  gap: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+.mosaic-cell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1; /* 👈 CLAVE - celdas cuadradas */
+  overflow: hidden;
+  background: #000;
+}
+
+.mosaic-cell canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 👈 CLAVE - ocupa todo el espacio */
+  image-rendering: pixelated;
+}
+
+/* Efecto hover opcional */
+.mosaic-cell:hover canvas {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+  transition: all 0.2s ease;
+}
+
+
+/* Ocultar canvas de Three.js cuando no esté activo */
+#right-panel canvas {
+  transition: opacity 0.5s ease;
+  z-index: 2;
+
+}
+
+#right-panel canvas.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* O si prefieres mantener la transición, separa las clases: */
+.visually-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.hidden {
+  display: none !important;
 }

@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Hydra from 'hydra-synth';
 import AudioManager from './audio/AudioManager.js';
 import SnapshotCompressor from './compressor/snapshotCompressor.js';
+import { loadMosaic, showMosaic } from './mosaic.js';
 
 const audioManager = new AudioManager();
 let audioInitialized = false;
@@ -25,6 +26,13 @@ let currentPhraseIndex = 0;
 let phraseTimeout;
 let snapshotPreviewTimeout = null;
 
+let passiveMode = false;
+let currentHydraTexture = null;
+let isActive = false;
+let lastActiveTime = 0;
+let isWebSocketActivation = false;
+let activationTimeout = null;
+
 function initCSSMessageLayer() {
   messageOverlay = document.getElementById('message-overlay');
   nfcAnimation = document.getElementById('nfc-animation');
@@ -42,12 +50,57 @@ function startPhraseAnimation() {
     { static: "Descubre", dynamic: "tu registro, un trazo único en pantalla" }
   ];
   
-  function updatePhrase() {
-    const phrase = phrases[currentPhraseIndex];
-    document.getElementById('static-text').textContent = phrase.static;
-    document.getElementById('dynamic-text').textContent = phrase.dynamic;
+  // Activar modo pasivo
+  passiveMode = true;
+  isActive = false;
+  
+  console.log('🔄 Activando modo INACTIVO');
+  
+  // Mostrar mosaico y ocultar Three.js
+  showMosaic(true);
+  setThreeJSActive(false);
 
-    // 🔊 TRANSICIÓN ENTRE FRASES
+  // 👈 Asegurar que TODOS los elementos del modo pasivo estén visibles
+  const instructions = document.getElementById('instructions');
+  const nfcAnimation = document.getElementById('nfc-animation');
+  const mainTitle = document.getElementById('main-title');
+  const artDescription = document.getElementById('art-description');
+  const cyberpunkMessage = document.getElementById('cyberpunk-message');
+  
+  // Mostrar elementos de UI para modo pasivo
+  if (instructions) instructions.classList.remove('hidden');
+  if (nfcAnimation) nfcAnimation.classList.remove('hidden');
+  if (mainTitle) mainTitle.classList.remove('hidden');
+  if (cyberpunkMessage) cyberpunkMessage.classList.remove('hidden');
+  if (artDescription) artDescription.classList.add('hidden');
+  
+  // Ocultar elementos del modo activo
+  const logOverlay = document.getElementById('log-overlay');
+  const snapshotPreview = document.getElementById('snapshot-preview');
+  
+  if (logOverlay) logOverlay.classList.remove('active');
+  if (snapshotPreview) snapshotPreview.classList.remove('active');
+
+  console.log('✅ Elementos modo inactivo mostrados');
+
+  // Cargar mosaico
+  loadMosaic();
+
+  function updatePhrase() {
+    if (!passiveMode) {
+      console.log('⏹️ Deteniendo animación de frases (modo activo)');
+      return;
+    }
+
+    const phrase = phrases[currentPhraseIndex];
+    const staticText = document.getElementById('static-text');
+    const dynamicText = document.getElementById('dynamic-text');
+    
+    if (staticText && dynamicText) {
+      staticText.textContent = phrase.static;
+      dynamicText.textContent = phrase.dynamic;
+    }
+
     audioManager.playTransition("reveal");
 
     currentPhraseIndex = (currentPhraseIndex + 1) % phrases.length;
@@ -55,6 +108,33 @@ function startPhraseAnimation() {
   }
 
   updatePhrase();
+}
+
+function exitPassiveMode() {
+  passiveMode = false;
+  isActive = true;
+
+  // Ocultar mosaico y mostrar Three.js
+  showMosaic(false);
+  setThreeJSActive(true);
+
+  // Detener animación de frases
+  if (phraseTimeout) {
+    clearTimeout(phraseTimeout);
+    phraseTimeout = null;
+  }
+}
+
+function setThreeJSActive(active) {
+  const threeCanvas = renderer.domElement;
+  if (active) {
+    threeCanvas.classList.remove('hidden');
+    cloth.material = clothMaterial;
+    if (!scene.children.includes(cloth)) scene.add(cloth);
+  } else {
+    threeCanvas.classList.add('hidden');
+    if (scene.children.includes(cloth)) scene.remove(cloth);
+  }
 }
 
 function showNFC(show) {
@@ -68,11 +148,11 @@ function showMessage(show) {
   if (show) {
     cyberpunkMessage.classList.remove('hidden');
     showNFC(true);
-    artDescription.classList.add('hidden'); // 👈 Ocultar en estado pasivo
+    artDescription.classList.add('hidden');
   } else {
     cyberpunkMessage.classList.add('hidden');
     showNFC(false);
-    artDescription.classList.remove('hidden'); // 👈 Mostrar en estado activo
+    artDescription.classList.remove('hidden');
   }
 }
 
@@ -83,11 +163,9 @@ const maxLogEntries = 5;
 
 function getImageDataPreview() {
   try {
-    // Obtener datos reales del canvas de Hydra
     const canvas = hydraCanvas;
     const ctx = canvas.getContext('2d');
     
-    // Crear una imagen reducida para el preview
     const previewWidth = 40;
     const previewHeight = 30;
     const tempCanvas = document.createElement('canvas');
@@ -95,16 +173,14 @@ function getImageDataPreview() {
     tempCanvas.height = previewHeight;
     const tempCtx = tempCanvas.getContext('2d');
     
-    // Dibujar el canvas de Hydra escalado
     tempCtx.drawImage(canvas, 0, 0, previewWidth, previewHeight);
     const imageData = tempCtx.getImageData(0, 0, previewWidth, previewHeight);
     const data = imageData.data;
     
     let preview = '';
     let byteCount = 0;
-    const maxBytes = 16; // Limitar la cantidad de datos mostrados
+    const maxBytes = 16;
     
-    // Convertir datos de píxeles a formato hexadecimal compacto
     for (let i = 0; i < data.length && byteCount < maxBytes; i += 4) {
       if (byteCount % 4 === 0) preview += '\n    ';
       const r = data[i].toString(16).padStart(2, '0');
@@ -142,7 +218,6 @@ function addLogEntry(nfcIndex) {
     const compressor = new SnapshotCompressor();
     const compressedHex = compressor.captureHydraFrame(hydraCanvas);
     
-    // Crear nueva entrada
     const logEntry = document.createElement('div');
     logEntry.className = 'log-entry';
     logEntry.innerHTML = `
@@ -173,35 +248,28 @@ function showSnapshotPreview(hexData) {
   const previewContainer = document.getElementById('snapshot-preview');
   const compressor = new SnapshotCompressor();
   
-  // Limpiar timeout anterior
   if (snapshotPreviewTimeout) {
     clearTimeout(snapshotPreviewTimeout);
     snapshotPreviewTimeout = null;
   }
   
-  // Limpiar preview anterior
   previewContainer.innerHTML = '';
   
-  // Crear canvas cuadrado (80x80)
   const canvas = document.createElement('canvas');
   canvas.width = 80;
   canvas.height = 80;
   canvas.style.imageRendering = 'pixelated';
   
-  // Reconstruir imagen - AHORA ES DIRECTA 80x80
   const bytes = compressor.hexToBytes(hexData);
   const pixelData = compressor.decompress2bpp(bytes);
   const imageData = compressor.ditheredToImageData(pixelData);
   
   const ctx = canvas.getContext('2d');
-  
-  // 👈 DIBUJO DIRECTO - SIN RECORTES
   ctx.putImageData(imageData, 0, 0);
   
   previewContainer.appendChild(canvas);
   previewContainer.classList.add('active');
   
-  // Programar ocultamiento con la misma lógica de inactividad
   snapshotPreviewTimeout = setTimeout(() => {
     previewContainer.classList.remove('active');
   }, INACTIVITY_DELAY);
@@ -227,10 +295,10 @@ async function saveNFCEventToDatabase(nfcIndex, compressedHex) {
 function showLog(show) {
   if (show) {
     logOverlay.classList.add('active');
-    console.log('Log shown'); // Debug
+    console.log('Log shown');
   } else {
     logOverlay.classList.remove('active');
-    console.log('Log hidden'); // Debug
+    console.log('Log hidden');
   }
 }
 
@@ -279,31 +347,27 @@ const hydraTextures = [
   },
 ];
 
-let currentHydraTexture = null;
-let isActive = false;
-let lastActiveTime = 0;
-let isWebSocketActivation = false;
-let activationTimeout = null;
-
 // --- NFC / WebSocket ---
 function handleInitialNFC() {
   const params = new URLSearchParams(window.location.search);
   const nfcIndex = parseInt(params.get('nfc'));
   if (!isNaN(nfcIndex) && nfcIndex >= 0 && nfcIndex < hydraTextures.length) {
-    console.log('Initial NFC detected:', nfcIndex); // Debug
+    console.log('Initial NFC detected:', nfcIndex);
     lastActiveTime = Date.now();
     hydraTextures[nfcIndex]();
     currentHydraTexture = nfcIndex;
     isActive = true;
     lastActiveTime = Date.now();
     
-    // Mostrar log y agregar entrada con delay
+    // Salir del modo pasivo
+    if (passiveMode) exitPassiveMode();
+    
     setTimeout(() => {
       showLog(true);
       addLogEntry(nfcIndex);
     }, 200);
     
-    showMessage(false); // Ocultar texto en estado activo
+    showMessage(false);
     notifyServer(nfcIndex);
   }
 }
@@ -316,12 +380,13 @@ function notifyServer(index) {
   }).catch(e => console.error('Error notifying server:', e));
 }
 
-// En la función activateTexture:
 function activateTexture(index, fromWebSocket = false) {
   if (index >= 0 && index < hydraTextures.length) {
     console.log('Activating texture:', index);
     
-    // 🔊 SONIDO DE ÉXITO
+    // Salir del modo pasivo si es necesario
+    if (passiveMode) exitPassiveMode();
+    
     audioManager.playSuccess();
     
     hydraTextures[index]();
@@ -330,10 +395,8 @@ function activateTexture(index, fromWebSocket = false) {
     isWebSocketActivation = fromWebSocket;
     lastActiveTime = Date.now();
     
-    // 🔊 INICIAR SONIDO DE PROCESAMIENTO
     audioManager.startProcessing();
     
-    // Mostrar log y agregar entrada con delay
     setTimeout(() => {
       showLog(true);
       addLogEntry(index);
@@ -342,7 +405,6 @@ function activateTexture(index, fromWebSocket = false) {
     showMessage(false);
     resetInactivityTimeout();
   } else {
-    // 🔊 SONIDO DE ERROR
     audioManager.playError();
     console.log('Índice NFC inválido:', index);
   }
@@ -359,7 +421,6 @@ rightPanel.appendChild(renderer.domElement);
 
 // Hydra setup
 const hydra = new Hydra({ canvas: hydraCanvas, autoLoop: true, detectAudio: false });
-// Inicializar con primera textura pero sin log
 hydraTextures[0]();
 const vit = new THREE.CanvasTexture(hydraCanvas);
 
@@ -384,14 +445,14 @@ const clothMaterial = new THREE.MeshPhongMaterial({
 const cloth = new THREE.Mesh(geometry, clothMaterial);
 cloth.rotation.x = -Math.PI / 4;
 cloth.position.z = 0;
-cloth.position.y = 0.25; 
+cloth.position.y = 0.25;
 
-// --- Sobel Shader Modificado ---
+// --- Sobel Shader ---
 const SobelShader = {
   uniforms: { 
     tDiffuse: { value: vit }, 
     resolution: { value: new THREE.Vector2(1920, 1080) },
-    time: { value: 0 } // Añadir tiempo para animación continua
+    time: { value: 0 }
   },
   vertexShader: `
     varying vec2 vUv;
@@ -410,7 +471,6 @@ const SobelShader = {
       float dx = 1.0 / resolution.x;
       float dy = 1.0 / resolution.y;
       
-      // Añadir leve animación a las coordenadas de muestreo
       vec2 animatedUV = vUv + vec2(sin(time * 0.5 + vUv.y * 5.0) * 0.001, cos(time * 0.3 + vUv.x * 5.0) * 0.001);
       
       vec3 tl = texture2D(tDiffuse, animatedUV + vec2(-dx,-dy)).rgb;
@@ -426,7 +486,6 @@ const SobelShader = {
       vec3 ver = -tl - 2.0*t - tr + bl + 2.0*b + br;
       float edge = length(hor + ver);
       
-      // Añadir efecto de parpadeo sutil
       float pulse = 0.8 + 0.2 * sin(time * 2.0);
       vec3 color = vec3(edge * pulse);
       
@@ -526,7 +585,6 @@ function updateClothGeometry() {
     const intensity = smoothstep(0.2, 0.8, r * 0.3 + g * 0.6 + b * 0.1);
     const waveDisplacement = multiWave(x, y, timeUniform.value);
 
-    // Aplicar distorsión en AMBOS estados
     positions.array[iz] = waveDisplacement + (intensity - 0.5) * colorInfluence;
     positions.array[ix] = x + Math.sin(y * 2.0 + timeUniform.value * 1.5) * 0.01;
     positions.array[iy] = y + Math.cos(x * 1.7 + timeUniform.value * 1.2) * 0.01;
@@ -546,7 +604,11 @@ function resetInactivityTimeout() {
     if (Date.now() - lastActiveTime >= INACTIVITY_DELAY) {
       isActive = false;
       isWebSocketActivation = false;
-      showMessage(true);
+      
+      // Volver al modo pasivo
+      passiveMode = true;
+      startPhraseAnimation();
+      
       showLog(false);
       resetCameraPosition();
       
@@ -564,35 +626,27 @@ function resetInactivityTimeout() {
 function animate() {
   requestAnimationFrame(animate);
 
-  vit.needsUpdate = true;
-
-  // Mesh siempre visible
-  if (!scene.children.includes(cloth)) scene.add(cloth);
-  if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
-
-  // Actualizar distorsión del mesh en AMBOS estados
-  timeUniform.value += 0.01;
-  updateClothGeometry();
-  
-  // Actualizar tiempo en el shader Sobel
-  clothSobelMaterial.uniforms.time.value = timeUniform.value;
-
-  if (!isActive) {
-    // Estado pasivo: Shader Sobel + texto visible + SIN ROTACIÓN
-    cloth.material = clothSobelMaterial;
-    // cloth.rotation.z NO se modifica - el mesh se detiene
-  } else {
-    // Estado activo: Textura Hydra + texto oculto + CON ROTACIÓN
-    cloth.material = clothMaterial;
-    cloth.rotation.z += 0.005; // Rotación solo en estado activo
+  if (isActive) {
+    vit.needsUpdate = true;
+    timeUniform.value += 0.01;
+    updateClothGeometry();
   }
+
+  if (isActive) {
+    if (!scene.children.includes(cloth)) scene.add(cloth);
+    cloth.material = clothMaterial;
+    cloth.rotation.z += 0.005;
+  } else {
+    if (scene.children.includes(cloth)) scene.remove(cloth);
+  }
+
+  if (!scene.children.includes(wireframeCube)) scene.add(wireframeCube);
 
   controls.update();
   renderer.render(scene, camera);
 }
 
 // --- WebSocket ---
-// Conexión robusta con reconexión automática y manejo de errores
 let socket;
 const protocol = window.location.protocol === "https:" ? "wss" : "ws";
 
@@ -608,7 +662,6 @@ function connectWebSocket() {
       const data = JSON.parse(event.data);
       if (data.type === "activate") {
         lastActiveTime = Date.now();
-        // 🔊 El sonido de éxito ahora se reproduce en activateTexture()
         activateTexture(parseInt(data.index), true);
       } else if (data.type === "ping") {
         socket.send(JSON.stringify({ type: "pong" }));
@@ -626,27 +679,22 @@ function connectWebSocket() {
 
   socket.addEventListener("error", (err) => {
     console.error("❌ Error en WebSocket:", err);
-    socket.close(); // fuerza el cierre para que se dispare la reconexión
+    socket.close();
   });
 }
 
-// Enviar datos al servidor con verificación de conexión
 function safeSend(data) {
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(JSON.stringify(data));
-  } else {
-    console.warn("⚠️ No se puede enviar, socket no está listo");
   }
 }
 
-// Mantener la conexión viva con un "ping" periódico
 setInterval(() => {
   if (socket && socket.readyState === WebSocket.OPEN) {
     safeSend({ type: "ping" });
   }
 }, 30000);
 
-// Inicializar la conexión
 connectWebSocket();
 
 // --- Init ---
@@ -660,9 +708,8 @@ function init() {
   animate();
   resetInactivityTimeout();
   
-  // 🔊 TEXTURAS ATMOSFÉRICAS CADA 20-30 SEGUNDOS
   setInterval(() => {
-    if (audioInitialized && !isActive) { // Solo en estado pasivo
+    if (audioInitialized && !isActive) {
       audioManager.playAtmosphericTexture();
     }
   }, 20000 + Math.random() * 10000);
@@ -675,15 +722,13 @@ window.addEventListener('beforeunload', () => {
 document.addEventListener('keydown', (event) => {
   if (!audioInitialized) initAudioOnClick();
   
-  // Debug de sonidos
   if (event.key === '1') audioManager.playSuccess();
   else if (event.key === '2') audioManager.playError();
   else if (event.key === '3') audioManager.startAmbientSound();
   else if (event.key === '0') audioManager.stopAmbientSound();
-  else if (event.key === 't') audioManager.playTransition("reveal"); // Nueva tecla para transiciones
-  else if (event.key === 'a') audioManager.playAtmosphericTexture(); // Nueva tecla para texturas
+  else if (event.key === 't') audioManager.playTransition("reveal");
+  else if (event.key === 'a') audioManager.playAtmosphericTexture();
   
-  // Debug: Simular NFC con teclas 4-7
   if (event.key >= '4' && event.key <= '7') {
     const nfcIndex = parseInt(event.key) - 4;
     activateTexture(nfcIndex);
@@ -692,7 +737,7 @@ document.addEventListener('keydown', (event) => {
 
 window.addEventListener('beforeunload', () => {
   if (phraseTimeout) clearTimeout(phraseTimeout);
-  audioManager.cleanup(); // 🔊 LIMPIAR AUDIO
+  audioManager.cleanup();
 });
 
 init();
