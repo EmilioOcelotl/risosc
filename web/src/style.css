@@ -124,11 +124,21 @@ html, body {
 #nfc-animation {
   position: relative;
   height: 200px;
-  margin-top: 60px;
+  margin: 60px auto; /* 👈 centrado automático */
+  width: 500px;     /* 👈 mismo ancho fijo */
+  max-width: 95%;    /* 👈 se adapta en pantallas pequeñas */
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
+
+  /* Fondo y estilo */
+  padding: 40px 60px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0);
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
 }
 
 .nfc-circles {
@@ -214,29 +224,30 @@ html, body {
 .connection-line {
   position: absolute;
   height: 2px;
+  width: 100%;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
   top: 50%;
-  left: 140px;
-  right: 140px;
+  left: 0;
   opacity: 0.6;
-  margin-top: -25px;
+  transform: translateY(-25px);
 }
 
 #nfc-text {
   position: absolute;
-  bottom: -40px;
+  bottom: -60px; /* 👈 Ajustado por el nuevo recuadro */
   left: 50%;
   transform: translateX(-50%);
   font-size: 24px;
   font-weight: bold;
   opacity: 0.8;
   white-space: nowrap;
-  padding: 8px 16px;
+  padding: 12px 24px;
   background: rgba(0, 0, 0, 0.4);
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(5px);
   display: inline-block;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
 /* ANIMACIONES */
