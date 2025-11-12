@@ -4,13 +4,14 @@
 
 RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 
-Impresiones risográficas con etiquetas NFC y esculturas 3D interactivas, controladas por web, servidor, firmware, exportador 3D y scripts de proyección automática. Este repositorio cuenta con 5 partes: 
+Impresiones risográficas con etiquetas NFC y esculturas 3D interactivas, controladas por web, servidor, firmware, exportador 3D y scripts de proyección automática. Este repositorio cuenta con 6 partes: 
 
 - **Web**: Visualizaciones interactivas generadas con Three.js y Hydra, que se ejecutan en navegadores de escritorio o móviles. Responden en tiempo real a activaciones de NFC enviadas desde el servidor y pueden entrar en un modo de demostración automática cuando no hay actividad.
 - **Server**: Servidor Express con WebSocket que gestiona lecturas de NFC y transmite eventos a los clientes web. Coordina múltiples conexiones, activa texturas según la interacción y soporta la proyección continua de contenido en modo demo.
 - **Firmware** para ESP32 con lector PN532 que detecta etiquetas NFC y activa interacciones en la plataforma web RisOSC. Permite enviar notificaciones al servidor y controlar estados con un LED RGB, funcionando según un horario programado.
 - **Export**: Herramienta web que permite deformar mallas 3D usando texturas y generar modelos GLB exportables. Integra visualización en tiempo real con Three.js y Hydra, y soporta captura de snapshots y exportación para uso en otros contextos.
 - **Scripts**: Configuración de modo kiosk en computadora con Debian para proyección continua de la plataforma RisOSC. Inicia Chromium en pantalla completa apuntando a la web, desactiva salvapantallas y ahorro de energía, y permite programar apagado automático con cron.
+- **Dashboard**: Monitoreo de las intereacciones. Muestra el último elemento de la base de datos y reconstruye el último snapshot que llegó. 
 
 ## Requerimientos y Montaje
 
