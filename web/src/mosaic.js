@@ -1,4 +1,4 @@
-// mosaic.js - Versión que usa el mismo enfoque que tu ejemplo
+// mosaic.js - Versión optimizada con densidad máxima
 import SnapshotCompressor from './compressor/snapshotCompressor.js';
 
 export async function loadMosaic() {
@@ -9,29 +9,52 @@ export async function loadMosaic() {
   }
 
   try {
-    const res = await fetch('/api/nfc-events?limit=600');
+    const res = await fetch('/api/nfc-events?limit=1200');
     if (!res.ok) throw new Error('Error fetching snapshots');
     
     let snapshots = await res.json();
     console.log('Snapshots cargados:', snapshots.length);
 
-    // Calcular dimensiones igual que en tu ejemplo
-    const targetSize = 80;
-    const cols = Math.floor(window.innerWidth / targetSize);
-    const rows = Math.floor(window.innerHeight / targetSize);
-    const total = cols * rows;
+    // Ordenar por timestamp (más recientes primero)
+    snapshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    console.log(`🔲 Grid: ${cols}x${rows} = ${total} celdas`);
+    // 👇 CÁLCULO DE DENSIDAD MÁXIMA SIN LÍMITES
+    const availableWidth = window.innerWidth;
+    const availableHeight = window.innerHeight;
+    const totalArea = availableWidth * availableHeight;
+    
+    // Tamaño teórico para mostrar TODOS
+    const theoreticalSize = Math.sqrt(totalArea / snapshots.length);
+    
+    // Dimensiones del grid
+    let cols = Math.floor(availableWidth / theoreticalSize);
+    let rows = Math.floor(availableHeight / theoreticalSize);
+    let totalCells = cols * rows;
 
-    // Manejar cantidad de snapshots igual que en tu ejemplo
-    if (snapshots.length < total) {
-      const repeatTimes = Math.ceil(total / snapshots.length);
-      snapshots = Array.from({length: total}, (_, i) => snapshots[i % snapshots.length]);
-    } else if (snapshots.length > total) {
-      snapshots = snapshots.slice(0, total);
+    console.log(`📐 Teórico: ${theoreticalSize.toFixed(1)}px, Grid: ${cols}x${rows} = ${totalCells} celdas`);
+
+    // 👇 OPTIMIZACIÓN: ELIMINAR SNAPS VIEJOS PARA EVITAR CELDAS VACÍAS
+    if (snapshots.length > totalCells) {
+      // Descartar los más viejos (que están al final del array ordenado)
+      const snapshotsToRemove = snapshots.length - totalCells;
+      snapshots = snapshots.slice(0, totalCells);
+      console.log(`🗑️ Eliminados ${snapshotsToRemove} snaps más viejos`);
+    } else if (snapshots.length < totalCells) {
+      // Ajustar filas para minimizar celdas vacías
+      const optimalRows = Math.ceil(snapshots.length / cols);
+      if (optimalRows <= Math.floor(availableHeight / theoreticalSize)) {
+        rows = optimalRows;
+        totalCells = cols * rows;
+        console.log(`🔄 Ajustado a ${cols}x${rows} = ${totalCells} celdas`);
+      }
     }
 
-    // 👇 CONFIGURACIÓN IDÉNTICA A TU EJEMPLO
+    // Tamaño final basado en grid optimizado
+    const finalCellSize = Math.min(availableWidth / cols, availableHeight / rows);
+    
+    console.log(`🎯 Final: ${cols}x${rows}, ${snapshots.length}/${totalCells} snaps, ${finalCellSize.toFixed(1)}px`);
+
+    // 👇 APLICAR AL GRID
     grid.style.display = 'grid';
     grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
     grid.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
@@ -40,34 +63,28 @@ export async function loadMosaic() {
     grid.style.gap = '0';
     grid.style.background = '#000';
     grid.style.overflow = 'hidden';
-    grid.style.padding = '0';
-    grid.style.margin = '0';
     grid.innerHTML = '';
 
     const compressor = new SnapshotCompressor();
 
-    // Crear celdas IDÉNTICAS a tu ejemplo
+    // Renderizar snaps optimizados
     snapshots.forEach((snap, index) => {
       const cell = document.createElement('div');
       cell.className = 'mosaic-cell';
       
-      // 👇 ESTILOS IDÉNTICOS A TU EJEMPLO
       cell.style.position = 'relative';
       cell.style.width = '100%';
-      cell.style.aspectRatio = '1 / 1'; // 👈 CLAVE para celdas cuadradas
+      cell.style.aspectRatio = '1 / 1';
       cell.style.overflow = 'hidden';
       cell.style.background = '#000';
       
       const canvas = document.createElement('canvas');
-      
-      // 👇 ESTILOS IDÉNTICOS A TU EJEMPLO
       canvas.style.position = 'absolute';
       canvas.style.width = '100%';
       canvas.style.height = '100%';
-      canvas.style.objectFit = 'cover'; // 👈 CLAVE para ocupar todo el espacio
+      canvas.style.objectFit = 'cover';
       canvas.style.imageRendering = 'pixelated';
 
-      // Tamaño del canvas (mantener resolución original)
       canvas.width = compressor.targetWidth;
       canvas.height = compressor.targetHeight;
 
@@ -79,40 +96,41 @@ export async function loadMosaic() {
         const dithered = compressor.decompress2bpp(bytes);
         const imgData = compressor.ditheredToImageData(dithered);
 
-        // Canvas temporal para rotar 90° - IGUAL QUE TU EJEMPLO
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = compressor.targetWidth;
         tempCanvas.height = compressor.targetHeight;
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.putImageData(imgData, 0, 0);
 
-        // Rotar 90° horario - IGUAL QUE TU EJEMPLO
         ctx.save();
-        ctx.translate(canvas.width, 0); // Mover origen a esquina superior derecha
-        ctx.rotate(Math.PI / 2);        // 90° horario
+        ctx.translate(canvas.width, 0);
+        ctx.rotate(Math.PI / 2);
         ctx.drawImage(tempCanvas, 0, 0);
         ctx.restore();
         
         cell.appendChild(canvas);
       } catch (error) {
         console.error('Error procesando snapshot', index, error);
-        // Celda de error que mantiene el aspecto
         cell.style.background = 'rgba(255, 50, 50, 0.2)';
-        const errorDiv = document.createElement('div');
-        errorDiv.textContent = '❌';
-        errorDiv.style.color = 'rgba(255, 100, 100, 0.7)';
-        errorDiv.style.fontSize = '24px';
-        errorDiv.style.position = 'absolute';
-        errorDiv.style.top = '50%';
-        errorDiv.style.left = '50%';
-        errorDiv.style.transform = 'translate(-50%, -50%)';
-        cell.appendChild(errorDiv);
       }
       
       grid.appendChild(cell);
     });
 
-    console.log('✅ Mosaico cargado - Estilo idéntico al ejemplo');
+    // Rellenar celdas vacías si las hay
+    const emptyCells = totalCells - snapshots.length;
+    if (emptyCells > 0) {
+      console.log(`⚪ ${emptyCells} celdas vacías`);
+      for (let i = 0; i < emptyCells; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'mosaic-cell';
+        emptyCell.style.background = '#000';
+        emptyCell.style.aspectRatio = '1 / 1';
+        grid.appendChild(emptyCell);
+      }
+    }
+
+    console.log('✅ Mosaico optimizado cargado');
     
   } catch (error) {
     console.error('Error cargando mosaico:', error);
@@ -177,4 +195,13 @@ export function cleanupMosaic() {
   if (resizeTimeout) {
     clearTimeout(resizeTimeout);
   }
+}
+
+// Inicializar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Mosaic.js inicializado');
+  });
+} else {
+  console.log('🚀 Mosaic.js inicializado (DOM ya listo)');
 }
