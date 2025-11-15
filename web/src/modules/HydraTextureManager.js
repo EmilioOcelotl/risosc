@@ -52,7 +52,7 @@ export default class HydraTextureManager {
                     .out();
             },
             () => {
-                osc(19, 0.4, 0.4)
+                osc(19, 0.19, 0.4) // bajar progresivamente
                     .color(1.5, 0.9 * 8, 0.8 * 4)
                     .modulate(noise(1, 0.1).rotate(0.1, 0.02).scale(1.01), 0.5)
                     .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
