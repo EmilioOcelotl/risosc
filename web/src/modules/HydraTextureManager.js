@@ -33,7 +33,7 @@ export default class HydraTextureManager {
         this.textures = [
             // Texturas base (0-3) - compatibles con tu código actual
             () => {
-                osc(19, 0.1, 0.4)
+                osc(12, 0.1, 0.4)
                     .color(0.8 * 8, 0.9 * 4, 1)
                     .modulate(noise(3, 0.1).rotate(0.1, 0.02).scale(1.1), 0.1)
                     .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
@@ -52,7 +52,7 @@ export default class HydraTextureManager {
                     .out();
             },
             () => {
-                osc(19, 0.19, 0.4) // bajar progresivamente
+                osc(12, 0.1, 0.4) // bajar progresivamente
                     .color(1.5, 0.9 * 8, 0.8 * 4)
                     .modulate(noise(1, 0.1).rotate(0.1, 0.02).scale(1.01), 0.5)
                     .modulate(src(o0).scale(1.1).rotate(0.01), 0.1)
