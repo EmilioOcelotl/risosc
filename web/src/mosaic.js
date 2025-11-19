@@ -1,5 +1,5 @@
 // mosaic.js - Versión optimizada con densidad máxima
-import SnapshotCompressor from './compressor/snapshotCompressor.js';
+import { SnapshotCompressor } from 'treslib';
 
 export async function loadMosaic() {
   const grid = document.getElementById('mosaic-grid');

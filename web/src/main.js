@@ -1,10 +1,7 @@
 // main.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import HydraTextureManager from './modules/HydraTextureManager.js';
-import ClothMeshManager from './modules/ClothMeshManager.js';
-import AudioManager from './audio/AudioManager.js';
-import SnapshotCompressor from './compressor/snapshotCompressor.js';
+import { AudioManager, ClothMeshManager, HydraTextureManager, SnapshotCompressor } from 'treslib';
 import { loadMosaic, showMosaic } from './mosaic.js';
 
 const audioManager = new AudioManager();
