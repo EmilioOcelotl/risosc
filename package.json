@@ -15,7 +15,7 @@
         "hydra-synth": "^1.4.0",
         "sqlite3": "^5.1.7",
         "three": "0.132.2",
-        "treslib": "^1.5.2",
+        "treslib": "^1.6.1",
         "ws": "^8.18.2"
     },
     "devDependencies": {

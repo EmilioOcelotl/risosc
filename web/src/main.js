@@ -68,7 +68,10 @@ function startPhraseAnimation() {
   isActive = false;
   
   console.log('🔄 Activando modo INACTIVO');
-  
+  if (textureManager) {
+    textureManager.hush();
+    console.log("hush a Hydra")
+  }
   // Mostrar mosaico y ocultar Three.js
   showMosaic(true);
   setThreeJSActive(false);
@@ -182,6 +185,9 @@ function addLogEntry(nfcIndex) {
     hour12: false 
   });
   
+  // 👈 Usar el nuevo método ensureReady antes de capturar
+  textureManager.ensureReady();
+  
   setTimeout(() => {
     const compressor = new SnapshotCompressor();
     const compressedHex = compressor.captureHydraFrame(hydraCanvas);
@@ -203,13 +209,11 @@ function addLogEntry(nfcIndex) {
       logEntries.removeChild(logEntries.firstChild);
     }
     
-    // 🔊 DETENER SONIDO DE PROCESAMIENTO AL COMPLETAR
     audioManager.stopProcessing();
-    
     showSnapshotPreview(compressedHex);
     saveNFCEventToDatabase(nfcIndex, compressedHex);
     
-  }, 100);
+  }, 200); 
 }
 
 function showSnapshotPreview(hexData) {
@@ -318,7 +322,7 @@ function activateTexture(index, fromWebSocket = false) {
     setTimeout(() => {
       showLog(true);
       addLogEntry(index);
-    }, 200);
+    }, 500);
     
     showMessage(false);
     resetInactivityTimeout();
