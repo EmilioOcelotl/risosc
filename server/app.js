@@ -18,7 +18,6 @@ const WEB_SRC_DIR = path.join(__dirname, '../web/src');    // viewers y archivos
 app.use(express.static(SITE_DIR));    // sitio principal
 app.use(express.static(DIST_DIR));    // app histórica
 app.use(express.static(WEB_SRC_DIR)); // viewers
-app.use('/lib/treslib', express.static(path.join(__dirname, '../node_modules/treslib/src')));
 
 // 2️⃣ Crear servidor HTTP
 const server = http.createServer(app);
