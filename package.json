@@ -1,6 +1,6 @@
 {
     "name": "risosc",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "description": "Proyecto RisOSC: front-end con Three + Hydra y backend con Express + WebSocket",
     "scripts": {
         "dev": "parcel ./web/src/index.html",
