@@ -149,6 +149,54 @@ input[type="range"] {
 
 .cell:hover .cell-meta { display: block; }
 
+/* ── Welcome screen ── */
+#welcome {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+#welcome.hidden { display: none; }
+
+#welcome-box {
+  max-width: 420px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#welcome-box h2 {
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+#welcome-box p {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+}
+
+#welcome-btn {
+  align-self: flex-start;
+  margin-top: 8px;
+  border-color: #444;
+  color: #888;
+}
+
+#welcome-btn:hover {
+  border-color: #fff;
+  color: #fff;
+}
+
 /* ── Empty / loading ── */
 #status {
   padding: 48px 24px;

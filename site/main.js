@@ -244,7 +244,24 @@ window.addEventListener('resize', () => {
 
 function setAudioStatus(msg) { audioStatus.textContent = msg; }
 
+// ── Welcome screen ───────────────────────────────────────────────────────────
+
+const welcome    = document.getElementById('welcome');
+const welcomeBtn = document.getElementById('welcome-btn');
+
+function initWelcome() {
+  if (sessionStorage.getItem('risosc-welcomed')) {
+    welcome.classList.add('hidden');
+    return;
+  }
+  welcomeBtn.addEventListener('click', () => {
+    welcome.classList.add('hidden');
+    sessionStorage.setItem('risosc-welcomed', '1');
+  });
+}
+
 // ── Init ─────────────────────────────────────────────────────────────────────
 
+initWelcome();
 loadStats();
 loadGrid();
