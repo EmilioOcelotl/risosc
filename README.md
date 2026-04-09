@@ -4,14 +4,30 @@
 
 RisOSC. Escrituras sobre lo escaso multiplicado y lo efímero único.
 
-Impresiones risográficas con etiquetas NFC y esculturas 3D interactivas, controladas por web, servidor, firmware, exportador 3D y scripts de proyección automática. Este repositorio cuenta con 6 partes: 
+Impresiones risográficas con etiquetas NFC y esculturas 3D interactivas, controladas por web, servidor, firmware, exportador 3D y scripts de proyección automática.
 
-- **Web**: Visualizaciones interactivas generadas con Three.js y Hydra, que se ejecutan en navegadores de escritorio o móviles. Responden en tiempo real a activaciones de NFC enviadas desde el servidor y pueden entrar en un modo de demostración automática cuando no hay actividad.
-- **Server**: Servidor Express con WebSocket que gestiona lecturas de NFC y transmite eventos a los clientes web. Coordina múltiples conexiones, activa texturas según la interacción y soporta la proyección continua de contenido en modo demo.
-- **Firmware** para ESP32 con lector PN532 que detecta etiquetas NFC y activa interacciones en la plataforma web RisOSC. Permite enviar notificaciones al servidor y controlar estados con un LED RGB, funcionando según un horario programado.
-- **Export**: Herramienta web que permite deformar mallas 3D usando texturas y generar modelos GLB exportables. Integra visualización en tiempo real con Three.js y Hydra, y soporta captura de snapshots y exportación para uso en otros contextos.
-- **Scripts**: Configuración de modo kiosk en computadora con Debian para proyección continua de la plataforma RisOSC. Inicia Chromium en pantalla completa apuntando a la web, desactiva salvapantallas y ahorro de energía, y permite programar apagado automático con cron.
-- **Dashboard**: Monitoreo de las intereacciones. Muestra el último elemento de la base de datos y reconstruye el último snapshot que llegó. 
+---
+
+## Estado del proyecto
+
+### Durante la exhibición
+
+La pieza fue exhibida como instalación física. Cada vez que un visitante acercaba una impresión risográfica al lector NFC, se generaba una visualización 3D única con Three.js e Hydra y se capturaba un snapshot comprimido en base de datos. El frontend en `web/` es el registro de esa versión — se conserva sin modificaciones.
+
+Las seis partes originales de la instalación:
+
+- **Web** (`web/`): Visualizaciones interactivas generadas con Three.js y Hydra. Responden en tiempo real a activaciones de NFC y entran en modo de demostración automática cuando no hay actividad. Accesible en `/web`.
+- **Server** (`server/`): Servidor Express con WebSocket que gestiona lecturas de NFC y transmite eventos a los clientes web.
+- **Firmware** (`firmware/`): ESP32 con lector PN532 que detecta etiquetas NFC y activa interacciones. Controla estados con LED RGB y funciona según horario programado.
+- **Export** (`exporter/`): Herramienta web para deformar mallas 3D y exportar modelos GLB.
+- **Scripts** (`scripts/`): Configuración de modo kiosk en Debian para proyección continua.
+- **Dashboard** (`web/src/dashboard.html`): Monitoreo de interacciones. Accesible en `/dashboard`.
+
+### Post-exhibición
+
+Una vez concluida la instalación, el proyecto evoluciona como exploración del dataset generado. Se añade `site/` como nueva raíz del servidor:
+
+- **Site** (`site/`): Página única que combina el archivo visual del dataset con síntesis granular interactiva. Muestra el mosaico completo de snapshots capturados durante la exhibición. Al cargar un archivo de audio, cada celda del mosaico puede controlarse con click — las propiedades visuales del snapshot (brillo, contraste, complejidad) modulan el granulador en tiempo real. Accesible en `/`.
 
 ## Requerimientos y Montaje
 
@@ -65,28 +81,41 @@ Esto instalará todas las dependencias de server y web.
 
 ### Desarrollo
 
-Para trabajar en desarrollo con recarga automática:
+Para trabajar en la app histórica (`web/`) con recarga automática:
 
-```npm run dev```
+```
+npm run dev
+```
 
-Esto levanta la aplicación web con Parcel (web/src/index.html) en modo desarrollo.
+Esto levanta la aplicación web con Parcel (`web/src/index.html`) en modo desarrollo en el puerto 1234.
 
 El servidor Express + WebSocket se puede correr por separado con:
 
-```npm start```
+```
+npm start
+```
 
-En este modo, puedes modificar archivos en web/src y Parcel recargará automáticamente la página.
+`site/` no requiere compilación — se sirve directamente como archivos estáticos.
 
 ### Producción local
 
-Para compilar la web y servirla desde Express:
+Para compilar la app histórica y servirla desde Express:
 
+```
 npm run build
 npm start
+```
 
-npm run build genera los archivos estáticos en web/dist.
+`npm run build` genera los archivos estáticos en `dist/`.
 
-npm start levanta el servidor Express que sirve los archivos estáticos y los WebSockets.
+`npm start` levanta el servidor Express en el puerto 3000, que sirve:
+
+| Ruta | Contenido |
+|------|-----------|
+| `/` | `site/` — explorador granular post-exhibición |
+| `/web` | `dist/` — app Three.js de la instalación original |
+| `/dashboard` | Panel de monitoreo de interacciones |
+| `/lib/treslib/` | Módulos granulares de treslib (servidos para `site/`) |
 
 ### Producción con PM2
 
@@ -107,7 +136,7 @@ pm2 restart risosc
 
 Esto mantiene la aplicación corriendo en segundo plano incluso si cierras la terminal.
 
-Los archivos estáticos de web/dist ya deben estar construidos previamente.
+Los archivos estáticos en `dist/` ya deben estar construidos previamente con `npm run build`.
 
 ## Firmware
 
