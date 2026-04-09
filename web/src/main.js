@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { AudioManager, ClothMeshManager, HydraTextureManager, SnapshotCompressor } from 'treslib';
-import { loadMosaic, showMosaic } from './mosaic.js';
+import { loadMosaic, showMosaic, cleanupMosaic } from './mosaic.js';
 
 const audioManager = new AudioManager();
 let audioInitialized = false;
@@ -131,6 +131,7 @@ function exitPassiveMode() {
   isActive = true;
 
   // Ocultar mosaico y mostrar Three.js
+  cleanupMosaic();
   showMosaic(false);
   setThreeJSActive(true);
 

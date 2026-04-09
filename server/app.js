@@ -251,6 +251,9 @@ app.get('/api/analytics/nfc/:index', (req, res) => {
 // 🔟 Endpoint para activar desde query param
 app.get('/trigger', (req, res) => {
   const nfcIndex = parseInt(req.query.nfc);
+  if (isNaN(nfcIndex) || nfcIndex < 0 || nfcIndex > 3) {
+    return res.status(400).send('Parámetro nfc inválido. Usa ?nfc=0 a ?nfc=3');
+  }
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify({ type: 'activate', index: nfcIndex }));

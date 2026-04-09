@@ -15,6 +15,11 @@ export async function loadMosaic() {
     let snapshots = await res.json();
     console.log('Snapshots cargados:', snapshots.length);
 
+    if (snapshots.length === 0) {
+      console.log('Sin snapshots disponibles');
+      return;
+    }
+
     // Ordenar por timestamp (más recientes primero)
     snapshots.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
@@ -22,7 +27,7 @@ export async function loadMosaic() {
     const availableWidth = window.innerWidth;
     const availableHeight = window.innerHeight;
     const totalArea = availableWidth * availableHeight;
-    
+
     // Tamaño teórico para mostrar TODOS
     const theoreticalSize = Math.sqrt(totalArea / snapshots.length);
     
