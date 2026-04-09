@@ -1,6 +1,7 @@
 **/node_modules/
 
 nfc_snapshots.db
+nfc_snapshotsOld.db
 
 **/.parcel-cache/
 **/.cache/
@@ -12,3 +13,4 @@ build/
 *.log
 .env
 .DS_Store
+CLAUDE.md

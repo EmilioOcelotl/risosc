@@ -88,26 +88,8 @@ export async function loadMosaic() {
       canvas.width = compressor.targetWidth;
       canvas.height = compressor.targetHeight;
 
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      
       try {
-        const bytes = compressor.hexToBytes(snap.snapshot_data);
-        const dithered = compressor.decompress2bpp(bytes);
-        const imgData = compressor.ditheredToImageData(dithered);
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = compressor.targetWidth;
-        tempCanvas.height = compressor.targetHeight;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.putImageData(imgData, 0, 0);
-
-        ctx.save();
-        ctx.translate(canvas.width, 0);
-        ctx.rotate(Math.PI / 2);
-        ctx.drawImage(tempCanvas, 0, 0);
-        ctx.restore();
-        
+        compressor.renderToCanvas(snap.snapshot_data, canvas, 90);
         cell.appendChild(canvas);
       } catch (error) {
         console.error('Error procesando snapshot', index, error);
