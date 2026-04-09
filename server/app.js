@@ -37,74 +37,16 @@ wss.on('connection', (ws) => {
   });
 });
 
-// 4️⃣ CONEXIÓN A BD
-const db = new sqlite3.Database('./nfc_snapshots.db', (err) => {
+// 4️⃣ CONEXIÓN A BD (solo lectura — instalación concluida)
+const db = new sqlite3.Database('./nfc_snapshots.db', sqlite3.OPEN_READONLY, (err) => {
   if (err) {
     console.error('Error abriendo BD:', err.message);
   } else {
-    console.log('Conectado a SQLite');
-    // Crear tabla si no existe
-    db.run(`CREATE TABLE IF NOT EXISTS nfc_snapshots (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT NOT NULL,
-      nfc_index INTEGER NOT NULL,
-      texture_name TEXT,
-      snapshot_data TEXT NOT NULL,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    )`);
+    console.log('Conectado a SQLite (solo lectura)');
   }
 });
 
-// 5️⃣ Endpoint para NFC
-app.post('/api/nfc', (req, res) => {
-  const { index } = req.body;
-  console.log('NFC recibido:', index);
-
-  // Notificar clientes WebSocket
-  clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify({ type: 'activate', index }));
-    }
-  });
-
-  res.status(200).send('ok');
-});
-
-// 6️⃣ Endpoint para SNAPSHOTS
-app.post('/api/nfc-events', (req, res) => {
-  try {
-    const { timestamp, nfc_index, texture_name, snapshot_data } = req.body;
-    
-    // Validar datos
-    if (nfc_index === undefined || !snapshot_data) {
-      return res.status(400).json({ error: 'Datos incompletos' });
-    }
-
-    // Guardar en BD
-    db.run(
-      `INSERT INTO nfc_snapshots (timestamp, nfc_index, texture_name, snapshot_data) 
-       VALUES (?, ?, ?, ?)`,
-      [timestamp, nfc_index, texture_name, snapshot_data],
-      function(err) {
-        if (err) {
-          console.error('❌ Error BD:', err);
-          return res.status(500).json({ error: 'Error guardando en BD' });
-        }
-        
-        console.log(`Snapshot guardado: NFC_${nfc_index} | ${texture_name} | ${snapshot_data.length} bytes`);
-        res.json({ 
-          success: true, 
-          id: this.lastID,
-          size: snapshot_data.length 
-        });
-      }
-    );
-
-  } catch (error) {
-    console.error('❌ Error guardando snapshot:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
+// 5️⃣ Escritura deshabilitada — instalación concluida
 
 // 7️⃣ Endpoint para consultar historial
 app.get('/api/nfc-events', (req, res) => {
