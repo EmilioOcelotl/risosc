@@ -24,7 +24,6 @@ const audioFile    = document.getElementById('audio-file');
 const audioLoad    = document.getElementById('audio-load');
 const audioToggle  = document.getElementById('audio-toggle');
 const audioVol     = document.getElementById('audio-vol');
-const audioPos     = document.getElementById('audio-pos');
 
 // ── Analytics ────────────────────────────────────────────────────────────────
 
@@ -213,12 +212,6 @@ audioToggle.addEventListener('click', () => {
 
 audioVol.addEventListener('input', () => {
   if (grainEngine) grainEngine.masterAmp.gain.value = parseFloat(audioVol.value);
-});
-
-// ── Audio: posición manual ────────────────────────────────────────────────────
-
-audioPos.addEventListener('input', () => {
-  if (grainEngine) grainEngine.setParameter('pointer', parseFloat(audioPos.value));
 });
 
 // ── Filtros ──────────────────────────────────────────────────────────────────

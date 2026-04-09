@@ -42,7 +42,7 @@ const db = new sqlite3.Database('./nfc_snapshots.db', (err) => {
   if (err) {
     console.error('Error abriendo BD:', err.message);
   } else {
-    console.log('✅ Conectado a SQLite');
+    console.log('Conectado a SQLite');
     // Crear tabla si no existe
     db.run(`CREATE TABLE IF NOT EXISTS nfc_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +91,7 @@ app.post('/api/nfc-events', (req, res) => {
           return res.status(500).json({ error: 'Error guardando en BD' });
         }
         
-        console.log(`✅ Snapshot guardado: NFC_${nfc_index} | ${texture_name} | ${snapshot_data.length} bytes`);
+        console.log(`Snapshot guardado: NFC_${nfc_index} | ${texture_name} | ${snapshot_data.length} bytes`);
         res.json({ 
           success: true, 
           id: this.lastID,
@@ -283,10 +283,13 @@ app.use((req, res) => {
 // 1️⃣3️⃣ Puerto
 const PORT = 3000;
 server.listen(PORT, () => {
-  console.log(`Servidor en http://localhost:${PORT}`);
-  console.log(`📊 Endpoints de analytics disponibles:`);
-  console.log(`   http://localhost:${PORT}/api/analytics/overview`);
-  console.log(`   http://localhost:${PORT}/dashboard`); // 👈 NUEVA LÍNEA
+  console.log(`RisOSC corriendo en http://localhost:${PORT}`);
+  console.log(`  /              sitio principal (dataset + granulador)`);
+  console.log(`  /web           instalacion historica Three.js`);
+  console.log(`  /dashboard     panel de analiticas`);
+  console.log(`  /lib/treslib/  modulos granulares (GrainEngine, SnapToGrains)`);
+  console.log(`  /api/nfc-events         historial de snapshots`);
+  console.log(`  /api/analytics/overview estadisticas generales`);
 });
 
 // Manejo graceful de cierre
@@ -295,7 +298,7 @@ process.on('SIGINT', () => {
     if (err) {
       console.error(err.message);
     }
-    console.log('✅ BD cerrada');
+    console.log('BD cerrada');
     process.exit(0);
   });
 });
