@@ -1,0 +1,146 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --dim: #555;
+  --accent: #fff;
+  --cell-size: 80px;
+  --gap: 2px;
+  --font: 'Courier New', Courier, monospace;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 12px;
+  min-height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  padding: 24px 24px 16px;
+  border-bottom: 1px solid #222;
+}
+
+header h1 {
+  font-size: 14px;
+  font-weight: normal;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.stats {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  color: var(--dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.stat-value {
+  font-size: 16px;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-bottom: 1px solid #222;
+  flex-wrap: wrap;
+}
+
+button {
+  background: none;
+  border: 1px solid #333;
+  color: var(--dim);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 4px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+button:hover { border-color: #888; color: var(--fg); }
+button.active { border-color: var(--fg); color: var(--fg); }
+
+.toolbar-sep { flex: 1; }
+
+#export-btn { margin-left: auto; }
+
+/* ── Grid ── */
+#grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  padding: 24px;
+}
+
+.cell {
+  position: relative;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.cell canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.cell-meta {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.85);
+  color: #aaa;
+  font-size: 9px;
+  padding: 2px 4px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.cell:hover .cell-meta { display: block; }
+
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px 32px;
+  color: var(--dim);
+}
+
+.pagination button { min-width: 80px; }
+
+#page-info { font-size: 11px; }
+
+/* ── Empty / loading states ── */
+#status {
+  padding: 48px 24px;
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+}

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RisOSC — Dataset</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <h1>RisOSC — Registro de interacciones</h1>
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">Total</span>
+        <span class="stat-value" id="stat-total">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Promedio / día</span>
+        <span class="stat-value" id="stat-avg">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Tamaño BD</span>
+        <span class="stat-value" id="stat-size">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Último evento</span>
+        <span class="stat-value" id="stat-last">—</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <button class="active" data-filter="all">Todos</button>
+    <button data-filter="0">NFC 0</button>
+    <button data-filter="1">NFC 1</button>
+    <button data-filter="2">NFC 2</button>
+    <button data-filter="3">NFC 3</button>
+    <span class="toolbar-sep"></span>
+    <button id="export-btn">Exportar CSV</button>
+  </div>
+
+  <div id="status">Cargando...</div>
+  <div id="grid"></div>
+
+  <div class="pagination">
+    <button id="prev-btn" disabled>← Anterior</button>
+    <span id="page-info">página 1</span>
+    <button id="next-btn">Siguiente →</button>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

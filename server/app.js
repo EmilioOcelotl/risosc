@@ -10,11 +10,13 @@ const app = express();
 app.use(express.json());
 
 // Directorios
-const DIST_DIR = path.join(__dirname, '../dist');       // build principal
+const SITE_DIR = path.join(__dirname, '../site');       // nuevo sitio (landing principal)
+const DIST_DIR = path.join(__dirname, '../dist');       // build histórico (app Three.js)
 const WEB_SRC_DIR = path.join(__dirname, '../web/src'); // viewers y archivos originales
 
 // 1️⃣ Servir archivos estáticos
-app.use(express.static(DIST_DIR));    // app principal
+app.use(express.static(SITE_DIR));    // sitio principal
+app.use(express.static(DIST_DIR));    // app histórica
 app.use(express.static(WEB_SRC_DIR)); // viewers
 
 // 2️⃣ Crear servidor HTTP
@@ -105,19 +107,19 @@ app.post('/api/nfc-events', (req, res) => {
 
 // 7️⃣ Endpoint para consultar historial
 app.get('/api/nfc-events', (req, res) => {
-  const { limit = 50, nfc_index } = req.query;
-  
+  const { limit = 50, offset = 0, nfc_index } = req.query;
+
   let query = `SELECT * FROM nfc_snapshots`;
   let params = [];
-  
-  if (nfc_index) {
+
+  if (nfc_index !== undefined) {
     query += ` WHERE nfc_index = ?`;
     params.push(nfc_index);
   }
-  
-  query += ` ORDER BY timestamp DESC LIMIT ?`;
-  params.push(parseInt(limit));
-  
+
+  query += ` ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
+  params.push(parseInt(limit), parseInt(offset));
+
   db.all(query, params, (err, rows) => {
     if (err) {
       console.error('Error consultando eventos:', err);
@@ -267,9 +269,14 @@ app.get('/dashboard', (req, res) => {
   res.sendFile(path.join(WEB_SRC_DIR, 'dashboard.html'));
 });
 
+// App histórica Three.js
+app.get('/web', (req, res) => {
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
+});
+
 // 1️⃣2️⃣ SPA fallback - DEBE IR AL FINAL
 app.use((req, res) => {
-  res.sendFile(path.join(DIST_DIR, 'index.html'));
+  res.sendFile(path.join(SITE_DIR, 'index.html'));
 });
 
 // 1️⃣3️⃣ Puerto
