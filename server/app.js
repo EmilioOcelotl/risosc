@@ -10,14 +10,15 @@ const app = express();
 app.use(express.json());
 
 // Directorios
-const SITE_DIR = path.join(__dirname, '../site');       // nuevo sitio (landing principal)
-const DIST_DIR = path.join(__dirname, '../dist');       // build histórico (app Three.js)
-const WEB_SRC_DIR = path.join(__dirname, '../web/src'); // viewers y archivos originales
+const SITE_DIR    = path.join(__dirname, '../site');       // nuevo sitio (landing principal)
+const DIST_DIR    = path.join(__dirname, '../dist');       // build histórico (app Three.js)
+const WEB_SRC_DIR = path.join(__dirname, '../web/src');    // viewers y archivos originales
 
 // 1️⃣ Servir archivos estáticos
 app.use(express.static(SITE_DIR));    // sitio principal
 app.use(express.static(DIST_DIR));    // app histórica
 app.use(express.static(WEB_SRC_DIR)); // viewers
+app.use('/lib/treslib', express.static(path.join(__dirname, '../node_modules/treslib/src')));
 
 // 2️⃣ Crear servidor HTTP
 const server = http.createServer(app);

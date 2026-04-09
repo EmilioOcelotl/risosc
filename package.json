@@ -3,6 +3,7 @@
     "version": "1.2.0",
     "description": "Proyecto RisOSC: front-end con Three + Hydra y backend con Express + WebSocket",
     "scripts": {
+        
         "dev": "parcel ./web/src/index.html",
         "build": "parcel build ./web/src/index.html --public-url ./ && npm run copy-viewers",
         "copy-viewers": "cpx \"web/src/viewer.*\" dist/",

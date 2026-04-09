@@ -4,9 +4,7 @@
   --bg: #000;
   --fg: #fff;
   --dim: #555;
-  --accent: #fff;
   --cell-size: 80px;
-  --gap: 2px;
   --font: 'Courier New', Courier, monospace;
 }
 
@@ -15,7 +13,10 @@ html, body {
   color: var(--fg);
   font-family: var(--font);
   font-size: 12px;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Header ── */
@@ -78,35 +79,59 @@ button {
   transition: border-color 0.15s, color 0.15s;
 }
 
-button:hover { border-color: #888; color: var(--fg); }
-button.active { border-color: var(--fg); color: var(--fg); }
+button:hover     { border-color: #888; color: var(--fg); }
+button.active    { border-color: var(--fg); color: var(--fg); }
+button:disabled  { opacity: 0.3; cursor: default; border-color: #222; }
 
-.toolbar-sep { flex: 1; }
+input[type="file"] {
+  color: #444;
+  font-family: var(--font);
+  font-size: 10px;
+  max-width: 180px;
+}
 
-#export-btn { margin-left: auto; }
+input[type="range"] {
+  width: 80px;
+  accent-color: #fff;
+  cursor: pointer;
+}
+
+.toolbar-div  { color: #222; }
+.audio-label  { color: var(--dim); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+.toolbar-audio { border-top: none; padding-top: 6px; padding-bottom: 6px; }
+
+#audio-status {
+  color: #333;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 
 /* ── Grid ── */
 #grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--gap);
-  padding: 24px;
+  display: grid;
+  flex: 1;
+  background: #000;
 }
 
 .cell {
   position: relative;
-  width: var(--cell-size);
-  height: var(--cell-size);
-  cursor: default;
-  flex-shrink: 0;
+  overflow: hidden;
+  background: #000;
 }
 
 .cell canvas {
+  position: absolute;
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
-  display: block;
+  object-fit: cover;
 }
+
+.cell-active { outline: 1px solid #fff; z-index: 2; }
 
 .cell-meta {
   display: none;
@@ -124,20 +149,7 @@ button.active { border-color: var(--fg); color: var(--fg); }
 
 .cell:hover .cell-meta { display: block; }
 
-/* ── Pagination ── */
-.pagination {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px 24px 32px;
-  color: var(--dim);
-}
-
-.pagination button { min-width: 80px; }
-
-#page-info { font-size: 11px; }
-
-/* ── Empty / loading states ── */
+/* ── Empty / loading ── */
 #status {
   padding: 48px 24px;
   color: var(--dim);

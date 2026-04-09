@@ -36,19 +36,25 @@
     <button data-filter="1">NFC 1</button>
     <button data-filter="2">NFC 2</button>
     <button data-filter="3">NFC 3</button>
-    <span class="toolbar-sep"></span>
-    <button id="export-btn">Exportar CSV</button>
+  </div>
+
+  <div class="toolbar toolbar-audio">
+    <input type="file" id="audio-file" accept="audio/*" />
+    <button id="audio-load">Cargar</button>
+    <span class="toolbar-div">|</span>
+    <button id="audio-toggle" disabled>Play</button>
+    <span class="toolbar-div">|</span>
+    <label class="audio-label">Vol</label>
+    <input type="range" id="audio-vol" min="0" max="1" step="0.01" value="0.8" />
+    <label class="audio-label">Pos</label>
+    <input type="range" id="audio-pos" min="0" max="1" step="0.001" value="0" />
+    <span class="toolbar-div">|</span>
+    <span id="audio-status">sin audio — carga un archivo y haz click en una celda</span>
   </div>
 
   <div id="status">Cargando...</div>
   <div id="grid"></div>
 
-  <div class="pagination">
-    <button id="prev-btn" disabled>← Anterior</button>
-    <span id="page-info">página 1</span>
-    <button id="next-btn">Siguiente →</button>
-  </div>
-
-  <script src="main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>

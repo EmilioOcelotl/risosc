@@ -1,193 +1,250 @@
-// ── Descompresor 2bpp inline (sin bundler) ──────────────────────────────────
+import { GrainEngine, SnapToGrains, SnapshotCompressor } from '/lib/granular.js';
 
-const PALETTE = [[0,0,0],[85,85,85],[170,170,170],[255,255,255]];
-const W = 80, H = 80;
+// ── Instancias treslib ────────────────────────────────────────────────────────
 
-function hexToBytes(hex) {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++)
-    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-  return bytes;
-}
+const compressor = new SnapshotCompressor(80, 80);
 
-function decompress2bpp(bytes) {
-  const pixels = new Uint8Array(W * H);
-  let idx = 0;
-  for (let i = 0; i < bytes.length && idx < pixels.length; i++) {
-    for (let n = 0; n < 4 && idx < pixels.length; n++)
-      pixels[idx++] = (bytes[i] >> (6 - n * 2)) & 0x03;
-  }
-  return pixels;
-}
+// ── Estado ───────────────────────────────────────────────────────────────────
 
-function renderHex(hex, canvas) {
-  const bytes = hexToBytes(hex);
-  const pixels = decompress2bpp(bytes);
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  const img = ctx.createImageData(W, H);
-  for (let i = 0; i < pixels.length; i++) {
-    const c = PALETTE[pixels[i]];
-    img.data[i * 4]     = c[0];
-    img.data[i * 4 + 1] = c[1];
-    img.data[i * 4 + 2] = c[2];
-    img.data[i * 4 + 3] = 255;
-  }
+let currentFilter = null;
+let snapshots     = []; // { hex, el }
 
-  // Rotar 90° (igual que el resto de la instalación)
-  const tmp = document.createElement('canvas');
-  tmp.width = W; tmp.height = H;
-  tmp.getContext('2d').putImageData(img, 0, 0);
-  ctx.save();
-  ctx.translate(W, 0);
-  ctx.rotate(Math.PI / 2);
-  ctx.drawImage(tmp, 0, 0);
-  ctx.restore();
-}
+let audioCtx     = null;
+let grainEngine  = null;
+let snapToGrains = null;
+let isPlaying    = false;
+let activeCell   = null;
 
-// ── Estado ──────────────────────────────────────────────────────────────────
+// ── DOM ──────────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 60;
-let currentFilter = null; // null = todos
-let currentPage = 0;
-let totalCount = 0;
+const grid         = document.getElementById('grid');
+const statusEl     = document.getElementById('status');
+const audioStatus  = document.getElementById('audio-status');
+const audioFile    = document.getElementById('audio-file');
+const audioLoad    = document.getElementById('audio-load');
+const audioToggle  = document.getElementById('audio-toggle');
+const audioVol     = document.getElementById('audio-vol');
+const audioPos     = document.getElementById('audio-pos');
 
-// ── DOM ─────────────────────────────────────────────────────────────────────
-
-const grid      = document.getElementById('grid');
-const status    = document.getElementById('status');
-const pageInfo  = document.getElementById('page-info');
-const prevBtn   = document.getElementById('prev-btn');
-const nextBtn   = document.getElementById('next-btn');
-const exportBtn = document.getElementById('export-btn');
-
-// ── Analytics ───────────────────────────────────────────────────────────────
+// ── Analytics ────────────────────────────────────────────────────────────────
 
 async function loadStats() {
   try {
-    const res = await fetch('/api/analytics/overview');
+    const res  = await fetch('/api/analytics/overview');
     if (!res.ok) return;
     const data = await res.json();
+    const ov   = data.overview;
 
-    totalCount = data.total_events ?? 0;
-
-    document.getElementById('stat-total').textContent  = totalCount.toLocaleString();
-    document.getElementById('stat-avg').textContent    = (data.daily_average ?? 0).toFixed(1);
-    document.getElementById('stat-size').textContent   = (data.total_size_mb ?? 0).toFixed(2) + ' MB';
-    document.getElementById('stat-last').textContent   = data.last_event
-      ? new Date(data.last_event).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+    document.getElementById('stat-total').textContent = (ov.total_events ?? 0).toLocaleString();
+    document.getElementById('stat-avg').textContent   = parseFloat(ov.avg_per_day ?? 0).toFixed(1);
+    document.getElementById('stat-size').textContent  = ov.total_data_size_mb ?? '—';
+    document.getElementById('stat-last').textContent  = ov.last_event
+      ? new Date(ov.last_event.replace(' ', 'T') + 'Z').toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
       : '—';
   } catch (e) {
     console.error('Error cargando stats:', e);
   }
 }
 
-// ── Grid ────────────────────────────────────────────────────────────────────
+// ── Grid (densidad máxima) ────────────────────────────────────────────────────
 
-async function loadPage() {
+async function loadGrid() {
+  statusEl.textContent   = 'Cargando...';
+  statusEl.style.display = 'block';
   grid.innerHTML = '';
-  status.textContent = 'Cargando...';
-  status.style.display = 'block';
+  snapshots = [];
 
-  const offset = currentPage * PAGE_SIZE;
-  const params = new URLSearchParams({ limit: PAGE_SIZE, offset });
+  const params = new URLSearchParams({ limit: 1200 });
   if (currentFilter !== null) params.set('nfc_index', currentFilter);
 
   try {
     const res = await fetch(`/api/nfc-events?${params}`);
-    if (!res.ok) throw new Error('Error fetching');
-    const rows = await res.json();
+    if (!res.ok) throw new Error('fetch failed');
+    let rows = await res.json();
 
-    status.style.display = rows.length === 0 ? 'block' : 'none';
-    if (rows.length === 0) { status.textContent = 'Sin resultados.'; updatePagination(0); return; }
+    if (rows.length === 0) { statusEl.textContent = 'Sin resultados.'; return; }
 
-    status.style.display = 'none';
+    rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-    rows.forEach(row => {
+    const topOffset = grid.getBoundingClientRect().top;
+    const W = window.innerWidth;
+    const H = window.innerHeight - topOffset;
+
+    const size = Math.sqrt((W * H) / rows.length);
+    let cols   = Math.floor(W / size);
+    let nrows  = Math.floor(H / size);
+    let total  = cols * nrows;
+
+    if (rows.length > total) {
+      rows = rows.slice(0, total);
+    } else if (rows.length < total) {
+      const opt = Math.ceil(rows.length / cols);
+      if (opt <= Math.floor(H / size)) { nrows = opt; total = cols * nrows; }
+    }
+
+    statusEl.style.display = 'none';
+
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    grid.style.gridTemplateRows    = `repeat(${nrows}, 1fr)`;
+    grid.style.height              = `${H}px`;
+    grid.style.padding             = '0';
+    grid.style.gap                 = '0';
+
+    rows.forEach((row, i) => {
       const cell = document.createElement('div');
       cell.className = 'cell';
 
       const canvas = document.createElement('canvas');
-      try { renderHex(row.snapshot_data, canvas); }
+      canvas.width  = compressor.targetWidth;
+      canvas.height = compressor.targetHeight;
+      try { compressor.renderToCanvas(row.snapshot_data, canvas, 90); }
       catch (e) { canvas.style.background = '#111'; }
 
       const meta = document.createElement('div');
-      meta.className = 'cell-meta';
-      const ts = new Date(row.timestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' });
+      meta.className   = 'cell-meta';
+      const ts = row.timestamp
+        ? new Date(row.timestamp).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })
+        : '—';
       meta.textContent = `NFC ${row.nfc_index} · ${ts}`;
 
       cell.appendChild(canvas);
       cell.appendChild(meta);
       grid.appendChild(cell);
+      snapshots.push({ hex: row.snapshot_data, el: cell });
+
+      cell.addEventListener('click', () => handleCellClick(i));
     });
 
-    updatePagination(rows.length);
+    for (let i = rows.length; i < total; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'cell';
+      grid.appendChild(empty);
+    }
+
   } catch (e) {
-    status.textContent = 'Error al cargar snapshots.';
+    statusEl.textContent = 'Error al cargar snapshots.';
     console.error(e);
   }
 }
 
-function updatePagination(loaded) {
-  const isFirst = currentPage === 0;
-  const isLast  = loaded < PAGE_SIZE;
-  prevBtn.disabled = isFirst;
-  nextBtn.disabled = isLast;
-  pageInfo.textContent = `página ${currentPage + 1}`;
+// ── Interacción con celda ─────────────────────────────────────────────────────
+
+function handleCellClick(i) {
+  if (!snapToGrains) {
+    setAudioStatus('carga un archivo de audio primero');
+    return;
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  if (activeCell) activeCell.el.classList.remove('cell-active');
+  activeCell = snapshots[i];
+  activeCell.el.classList.add('cell-active');
+
+  snapToGrains.applySnapshot(snapshots[i].hex);
+
+  const snap = snapToGrains.getCurrentSnapshot();
+  if (snap) {
+    setAudioStatus(
+      `brillo ${snap.brightness.toFixed(2)} · ` +
+      `contraste ${snap.contrast.toFixed(2)} · ` +
+      `complejidad ${snap.complexity.toFixed(2)}`
+    );
+  }
 }
 
-// ── Filtros ─────────────────────────────────────────────────────────────────
+// ── Audio: carga ─────────────────────────────────────────────────────────────
+
+audioLoad.addEventListener('click', async () => {
+  const file = audioFile.files[0];
+  if (!file) { setAudioStatus('selecciona un archivo primero'); return; }
+
+  setAudioStatus('cargando...');
+
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    const buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
+
+    if (grainEngine) { grainEngine.stop(); }
+
+    grainEngine = new GrainEngine(audioCtx, buffer, {
+      pointer: 0, rate: 1, overlaps: 6, windowSize: 0.12, masterAmp: parseFloat(audioVol.value),
+    });
+    grainEngine.connect(audioCtx.destination);
+
+    snapToGrains = new SnapToGrains(audioCtx, grainEngine, {
+      compressor,
+      smoothingTime: 0.5,
+      jitter: 0.05,
+      pointerTransitionTime: 2.0,
+    });
+
+    isPlaying = false;
+    audioToggle.textContent = 'Play';
+    audioToggle.disabled = false;
+
+    setAudioStatus(`"${file.name}" · ${buffer.duration.toFixed(1)}s · haz click en una celda`);
+
+  } catch (err) {
+    setAudioStatus('error: ' + err.message);
+    console.error(err);
+  }
+});
+
+// ── Audio: play / stop ────────────────────────────────────────────────────────
+
+audioToggle.addEventListener('click', () => {
+  if (!snapToGrains) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  if (isPlaying) {
+    snapToGrains.stop();
+    audioToggle.textContent = 'Play';
+    isPlaying = false;
+  } else {
+    snapToGrains.start();
+    audioToggle.textContent = 'Stop';
+    isPlaying = true;
+  }
+});
+
+// ── Audio: volumen ────────────────────────────────────────────────────────────
+
+audioVol.addEventListener('input', () => {
+  if (grainEngine) grainEngine.masterAmp.gain.value = parseFloat(audioVol.value);
+});
+
+// ── Audio: posición manual ────────────────────────────────────────────────────
+
+audioPos.addEventListener('input', () => {
+  if (grainEngine) grainEngine.setParameter('pointer', parseFloat(audioPos.value));
+});
+
+// ── Filtros ──────────────────────────────────────────────────────────────────
 
 document.querySelectorAll('[data-filter]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('[data-filter]').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     currentFilter = btn.dataset.filter === 'all' ? null : parseInt(btn.dataset.filter);
-    currentPage = 0;
-    loadPage();
+    loadGrid();
   });
 });
 
-prevBtn.addEventListener('click', () => { currentPage--; loadPage(); });
-nextBtn.addEventListener('click', () => { currentPage++; loadPage(); });
+// ── Resize ───────────────────────────────────────────────────────────────────
 
-// ── Export ──────────────────────────────────────────────────────────────────
-
-exportBtn.addEventListener('click', async () => {
-  exportBtn.textContent = 'Exportando...';
-  exportBtn.disabled = true;
-
-  try {
-    const params = new URLSearchParams({ limit: 9999, offset: 0 });
-    if (currentFilter !== null) params.set('nfc_index', currentFilter);
-
-    const res = await fetch(`/api/nfc-events?${params}`);
-    const rows = await res.json();
-
-    // CSV: id, timestamp, nfc_index, texture_name, snapshot_data
-    const header = 'id,timestamp,nfc_index,texture_name,snapshot_data';
-    const lines = rows.map(r =>
-      `${r.id},"${r.timestamp}",${r.nfc_index},"${r.texture_name ?? ''}","${r.snapshot_data}"`
-    );
-    const csv = [header, ...lines].join('\n');
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `risosc-snapshots${currentFilter !== null ? `-nfc${currentFilter}` : ''}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch (e) {
-    console.error('Error exportando:', e);
-  } finally {
-    exportBtn.textContent = 'Exportar CSV';
-    exportBtn.disabled = false;
-  }
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(loadGrid, 250);
 });
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function setAudioStatus(msg) { audioStatus.textContent = msg; }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 
 loadStats();
-loadPage();
+loadGrid();
