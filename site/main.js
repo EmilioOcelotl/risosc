@@ -130,10 +130,16 @@ async function loadGrid() {
 
 function handleCellClick(i) {
   if (!snapToGrains) {
-    setAudioStatus('carga un archivo de audio primero');
+    setAudioStatus('el audio aún no está listo');
     return;
   }
   if (audioCtx.state === 'suspended') audioCtx.resume();
+
+  if (!isPlaying) {
+    snapToGrains.start();
+    audioToggle.textContent = 'Stop';
+    isPlaying = true;
+  }
 
   if (activeCell) activeCell.el.classList.remove('cell-active');
   activeCell = snapshots[i];
@@ -151,7 +157,51 @@ function handleCellClick(i) {
   }
 }
 
-// ── Audio: carga ─────────────────────────────────────────────────────────────
+// ── Audio: setup del motor ───────────────────────────────────────────────────
+
+function buildEngine(buffer, label) {
+  if (grainEngine) { grainEngine.stop(); }
+
+  grainEngine = new GrainEngine(audioCtx, buffer, {
+    pointer: 0, rate: 1, overlaps: 6, windowSize: 0.12, masterAmp: parseFloat(audioVol.value),
+  });
+  grainEngine.connect(audioCtx.destination);
+
+  snapToGrains = new SnapToGrains(audioCtx, grainEngine, {
+    compressor,
+    smoothingTime: 0.5,
+    jitter: 0.05,
+    pointerTransitionTime: 2.0,
+  });
+
+  isPlaying = false;
+  audioToggle.textContent = 'Play';
+  audioToggle.disabled = false;
+
+  setAudioStatus(`${label} · ${buffer.duration.toFixed(1)}s · haz click en una celda`);
+}
+
+// ── Audio: muestra fija ──────────────────────────────────────────────────────
+
+const DEFAULT_AUDIO_URL = '/assets/snd/oci3.mp3';
+
+async function loadDefaultAudio() {
+  setAudioStatus('cargando audio...');
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const res = await fetch(DEFAULT_AUDIO_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = await audioCtx.decodeAudioData(await res.arrayBuffer());
+
+    buildEngine(buffer, 'muestra fija');
+  } catch (err) {
+    setAudioStatus('sin audio — carga un archivo y haz click en una celda');
+    console.error('Error cargando muestra fija:', err);
+  }
+}
+
+// ── Audio: carga de archivo (sustituye la muestra fija) ─────────────────────
 
 audioLoad.addEventListener('click', async () => {
   const file = audioFile.files[0];
@@ -164,27 +214,7 @@ audioLoad.addEventListener('click', async () => {
     if (audioCtx.state === 'suspended') await audioCtx.resume();
 
     const buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
-
-    if (grainEngine) { grainEngine.stop(); }
-
-    grainEngine = new GrainEngine(audioCtx, buffer, {
-      pointer: 0, rate: 1, overlaps: 6, windowSize: 0.12, masterAmp: parseFloat(audioVol.value),
-    });
-    grainEngine.connect(audioCtx.destination);
-
-    snapToGrains = new SnapToGrains(audioCtx, grainEngine, {
-      compressor,
-      smoothingTime: 0.5,
-      jitter: 0.05,
-      pointerTransitionTime: 2.0,
-    });
-
-    isPlaying = false;
-    audioToggle.textContent = 'Play';
-    audioToggle.disabled = false;
-
-    setAudioStatus(`"${file.name}" · ${buffer.duration.toFixed(1)}s · haz click en una celda`);
-
+    buildEngine(buffer, `"${file.name}"`);
   } catch (err) {
     setAudioStatus('error: ' + err.message);
     console.error(err);
@@ -258,3 +288,4 @@ function initWelcome() {
 initWelcome();
 loadStats();
 loadGrid();
+loadDefaultAudio();
