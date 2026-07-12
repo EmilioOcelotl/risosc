@@ -15,6 +15,9 @@ let snapToGrains = null;
 let isPlaying    = false;
 let activeCell   = null;
 
+// El slider (0-1) se mapea a ganancia con headroom: 0.8 por defecto → 1.2
+const VOL_BOOST = 1.5;
+
 // ── DOM ──────────────────────────────────────────────────────────────────────
 
 const grid         = document.getElementById('grid');
@@ -163,7 +166,7 @@ function buildEngine(buffer, label) {
   if (grainEngine) { grainEngine.stop(); }
 
   grainEngine = new GrainEngine(audioCtx, buffer, {
-    pointer: 0, rate: 1, overlaps: 6, windowSize: 0.12, masterAmp: parseFloat(audioVol.value),
+    pointer: 0, rate: 1, overlaps: 6, windowSize: 0.12, masterAmp: parseFloat(audioVol.value) * VOL_BOOST,
   });
   grainEngine.connect(audioCtx.destination);
 
@@ -241,7 +244,7 @@ audioToggle.addEventListener('click', () => {
 // ── Audio: volumen ────────────────────────────────────────────────────────────
 
 audioVol.addEventListener('input', () => {
-  if (grainEngine) grainEngine.masterAmp.gain.value = parseFloat(audioVol.value);
+  if (grainEngine) grainEngine.masterAmp.gain.value = parseFloat(audioVol.value) * VOL_BOOST;
 });
 
 // ── Filtros ──────────────────────────────────────────────────────────────────
